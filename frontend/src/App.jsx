@@ -6,6 +6,7 @@ import Results from "./components/Results.jsx";
 import LeadForm from "./components/LeadForm.jsx";
 import DemoVideos from "./components/DemoVideos.jsx";
 import CallSimulator from "./components/CallSimulator.jsx";
+import Integrations from "./components/Integrations.jsx";
 import { processLead, fetchSampleLeads } from "./api";
 
 const STAGES = ["intake", "qualification", "response", "follow_up", "action", "manager_summary"];
@@ -347,6 +348,8 @@ export default function App() {
         </div>
         <ActivityFeed events={activity} now={now} />
       </div>
+
+      <Integrations />
 
       <DemoVideos />
 
