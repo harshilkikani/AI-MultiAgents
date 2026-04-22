@@ -14,6 +14,29 @@ import { processLead, fetchSampleLeads } from "./api";
 const STAGES = ["intake", "qualification", "response", "follow_up", "action", "manager_summary"];
 const SPEED_MAP = { "1x": 1, "2x": 2, "5x": 5 };
 
+// Vertical-specific config drives copy and the revenue benchmarks used when
+// the activity feed logs booked calls / escalations.
+const VERTICALS = {
+  septic: {
+    label: "Septic",
+    tagline: "24/7 emergency pumping, routine service, new installs.",
+    emoji: "🚰",
+    accent: "#b08b5e",
+  },
+  roofing: {
+    label: "Roofing",
+    tagline: "Storm-damage triage, inspections, commercial bids.",
+    emoji: "🏠",
+    accent: "#d4a574",
+  },
+  hvac: {
+    label: "HVAC",
+    tagline: "After-hours repairs, maintenance plans, peak-season dispatch.",
+    emoji: "❄️",
+    accent: "#87b5e8",
+  },
+};
+
 let idCounter = 1;
 const nextId = () => `id-${idCounter++}`;
 
@@ -71,6 +94,7 @@ export default function App() {
   const [speed, setSpeed] = useState("2x");
   const [showManual, setShowManual] = useState(false);
   const [showCallSim, setShowCallSim] = useState(false);
+  const [vertical, setVertical] = useState(null); // null until prospect picks
   const streamTimerRef = useRef(null);
   const clockRef = useRef(null);
   const queuedRef = useRef([]);
@@ -220,11 +244,17 @@ export default function App() {
     }
   };
 
+  // Filter pool to the currently-selected vertical (fallback: all leads).
+  const verticalPool = useMemo(() => {
+    if (!vertical) return leadPool;
+    return leadPool.filter((l) => l.vertical === vertical);
+  }, [leadPool, vertical]);
+
   // --- Demo streaming ---
   const startDemo = () => {
-    if (leadPool.length === 0) return;
+    if (verticalPool.length === 0) return;
     setDemoRunning(true);
-    queuedRef.current = [...leadPool].sort(() => Math.random() - 0.5);
+    queuedRef.current = [...verticalPool].sort(() => Math.random() - 0.5);
     // drop the first lead in right away
     ingestNext();
     scheduleNext();
@@ -280,6 +310,12 @@ export default function App() {
     });
   };
 
+  const chooseVertical = (v) => {
+    if (v === vertical) return;
+    resetDemo();
+    setVertical(v);
+  };
+
   const handleManualRun = async (payload) => {
     const lead = {
       ...payload,
@@ -308,73 +344,118 @@ export default function App() {
             <p>AI lead automation for septic, roofing & HVAC. Qualify, reply to, and route every inbound lead in under 60 seconds.</p>
           </div>
         </div>
-        <div className="controls">
-          <div className="speed-group">
-            {Object.keys(SPEED_MAP).map((s) => (
-              <button
-                key={s}
-                className={"speed-btn" + (speed === s ? " active" : "")}
-                onClick={() => setSpeed(s)}
-              >{s}</button>
-            ))}
-          </div>
-          {demoRunning ? (
-            <button className="btn secondary" onClick={stopDemo}>Pause Demo</button>
-          ) : (
-            <button className="btn" onClick={startDemo} disabled={leadPool.length === 0}>
-              ▶ Start Demo
+        {vertical && (
+          <div className="controls">
+            <div className="speed-group">
+              {Object.keys(SPEED_MAP).map((s) => (
+                <button
+                  key={s}
+                  className={"speed-btn" + (speed === s ? " active" : "")}
+                  onClick={() => setSpeed(s)}
+                >{s}</button>
+              ))}
+            </div>
+            {demoRunning ? (
+              <button className="btn secondary" onClick={stopDemo}>Pause Demo</button>
+            ) : (
+              <button className="btn" onClick={startDemo} disabled={verticalPool.length === 0}>
+                ▶ Start Demo
+              </button>
+            )}
+            <button className="btn ghost" onClick={resetDemo}>Reset</button>
+            <button className="btn ghost" onClick={() => setShowManual((v) => !v)}>
+              {showManual ? "Close" : "+ Manual lead"}
             </button>
-          )}
-          <button className="btn ghost" onClick={resetDemo}>Reset</button>
-          <button className="btn ghost" onClick={() => setShowManual((v) => !v)}>
-            {showManual ? "Close" : "+ Manual lead"}
-          </button>
-        </div>
+          </div>
+        )}
       </header>
 
-      <Dashboard stats={stats} />
+      <div className="vertical-picker" role="tablist" aria-label="Choose your industry">
+        <div className="vertical-picker-label">
+          {vertical ? "Industry" : "Select your industry to start →"}
+        </div>
+        <div className="vertical-picker-tabs">
+          {Object.entries(VERTICALS).map(([key, v]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={vertical === key}
+              className={"vertical-tab" + (vertical === key ? " active" : "")}
+              onClick={() => chooseVertical(key)}
+              style={vertical === key ? { borderColor: v.accent } : undefined}
+            >
+              <span className="vertical-tab-emoji" aria-hidden="true">{v.emoji}</span>
+              <span className="vertical-tab-text">
+                <span className="vertical-tab-label">{v.label}</span>
+                <span className="vertical-tab-tag">{v.tagline}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {showManual && (
+      {!vertical && (
+        <div className="vertical-gate">
+          <div className="vertical-gate-inner">
+            <div className="vertical-gate-icon">👋</div>
+            <h2 className="vertical-gate-title">Pick your industry above to see your leads.</h2>
+            <p className="vertical-gate-sub">
+              The demo streams a realistic inbox of inbound leads for your vertical and runs each one through the 6-agent pipeline. Pricing, benchmarks, and sample data adjust to match.
+            </p>
+            <div className="vertical-gate-secondary">
+              Want a preview first? <button className="vertical-gate-link" onClick={() => setShowCallSim(true)}>📞 Watch it answer a call</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vertical && <Dashboard stats={stats} />}
+
+      {vertical && showManual && (
         <div className="manual-form-wrapper">
           <LeadForm onRun={handleManualRun} loading={loading} />
         </div>
       )}
 
-      <div className="call-cta-row">
-        <button className="call-cta-btn" onClick={() => setShowCallSim(true)}>
-          <span className="call-cta-icon">📞</span>
-          <span className="call-cta-text">
-            <span className="call-cta-title">Watch it answer a call</span>
-            <span className="call-cta-sub">Staged voice demo · septic · roofing · HVAC</span>
-          </span>
-          <span className="call-cta-arrow">→</span>
-        </button>
-      </div>
-
-      {showCallSim && (
-        <CallSimulator onClose={() => setShowCallSim(false)} />
+      {vertical && (
+        <div className="call-cta-row">
+          <button className="call-cta-btn" onClick={() => setShowCallSim(true)}>
+            <span className="call-cta-icon">📞</span>
+            <span className="call-cta-text">
+              <span className="call-cta-title">Watch it answer a {VERTICALS[vertical].label} call</span>
+              <span className="call-cta-sub">Staged voice demo with your industry's scenario</span>
+            </span>
+            <span className="call-cta-arrow">→</span>
+          </button>
+        </div>
       )}
 
-      <div className="main-grid">
-        <Inbox
-          inbox={inbox}
-          activeLeadId={activeLead?.id}
-          onSelect={(l) => !l.processing && runLead(l)}
-          now={now}
-        />
-        <div className="pipeline-col">
-          <Results
-            result={result}
-            loading={loading}
-            error={error}
-            revealedStage={revealedStage}
-            activeLead={activeLead}
-          />
-        </div>
-        <ActivityFeed events={activity} now={now} />
-      </div>
+      {showCallSim && (
+        <CallSimulator vertical={vertical} onClose={() => setShowCallSim(false)} />
+      )}
 
-      <RoiCalculator />
+      {vertical && (
+        <div className="main-grid">
+          <Inbox
+            inbox={inbox}
+            activeLeadId={activeLead?.id}
+            onSelect={(l) => !l.processing && runLead(l)}
+            now={now}
+          />
+          <div className="pipeline-col">
+            <Results
+              result={result}
+              loading={loading}
+              error={error}
+              revealedStage={revealedStage}
+              activeLead={activeLead}
+            />
+          </div>
+          <ActivityFeed events={activity} now={now} />
+        </div>
+      )}
+
+      <RoiCalculator initialVertical={vertical || "septic"} key={vertical || "septic"} />
 
       <Integrations />
 

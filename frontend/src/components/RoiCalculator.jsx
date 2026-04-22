@@ -28,12 +28,13 @@ const CLOSE_RATE = 0.25;
 const fmt = (n) =>
   "$" + Math.round(n).toLocaleString("en-US");
 
-export default function RoiCalculator({ compact = false, bookCallUrl = "https://calendly.com/ops-keresai/30min" }) {
-  const [vertical, setVertical] = useState("septic");
-  const [leads, setLeads] = useState(VERTICAL_DEFAULTS.septic.leads);
-  const [answer, setAnswer] = useState(VERTICAL_DEFAULTS.septic.answer);
-  const [jobValue, setJobValue] = useState(VERTICAL_DEFAULTS.septic.jobValue);
-  const [afterHours, setAfterHours] = useState(VERTICAL_DEFAULTS.septic.afterHours);
+export default function RoiCalculator({ compact = false, initialVertical = "septic", bookCallUrl = "https://calendly.com/ops-keresai/30min" }) {
+  const start = VERTICAL_DEFAULTS[initialVertical] || VERTICAL_DEFAULTS.septic;
+  const [vertical, setVertical] = useState(initialVertical in VERTICAL_DEFAULTS ? initialVertical : "septic");
+  const [leads, setLeads] = useState(start.leads);
+  const [answer, setAnswer] = useState(start.answer);
+  const [jobValue, setJobValue] = useState(start.jobValue);
+  const [afterHours, setAfterHours] = useState(start.afterHours);
 
   const applyVertical = (v) => {
     setVertical(v);

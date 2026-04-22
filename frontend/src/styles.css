@@ -747,6 +747,105 @@ textarea:focus, input:focus, select:focus { border-color: var(--accent); }
 }
 .footer-meta { font-size: 12px; }
 
+/* ---------- Vertical picker + gate ---------- */
+.vertical-picker {
+  margin: 0 0 18px;
+  padding: 14px 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.vertical-picker-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.vertical-picker-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 700px) {
+  .vertical-picker-tabs { grid-template-columns: 1fr; }
+}
+.vertical-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.06s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.vertical-tab:hover {
+  border-color: var(--keres);
+  transform: translateY(-1px);
+}
+.vertical-tab.active {
+  border-width: 2px;
+  background: linear-gradient(135deg, rgba(232, 121, 60, 0.1), rgba(232, 121, 60, 0.02));
+  box-shadow: inset 0 0 0 1px rgba(232, 121, 60, 0.18);
+}
+.vertical-tab-emoji {
+  font-size: 26px;
+  line-height: 1;
+}
+.vertical-tab-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vertical-tab-label { font-weight: 700; font-size: 14px; }
+.vertical-tab-tag {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.vertical-gate {
+  background: radial-gradient(circle at 30% 20%, rgba(232, 121, 60, 0.1), transparent 60%), var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 60px 28px;
+  text-align: center;
+  margin-bottom: 22px;
+}
+.vertical-gate-inner { max-width: 540px; margin: 0 auto; }
+.vertical-gate-icon { font-size: 42px; margin-bottom: 14px; }
+.vertical-gate-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: -0.01em;
+}
+.vertical-gate-sub {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0 0 22px;
+}
+.vertical-gate-secondary {
+  font-size: 13px;
+  color: var(--muted);
+}
+.vertical-gate-link {
+  background: transparent;
+  border: 1px solid var(--keres);
+  color: var(--keres);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: background 0.12s ease;
+}
+.vertical-gate-link:hover { background: rgba(232, 121, 60, 0.1); }
+
 /* ---------- Call simulator CTA row ---------- */
 .call-cta-row {
   margin: 0 0 14px;
