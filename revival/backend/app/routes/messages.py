@@ -17,6 +17,23 @@ from app.services.reply_classifier import classify_reply
 from app.services.twilio_client import send_sms
 from app.utils.logger import get_logger
 
+
+def _auto_reply_for_hot(lead: Lead, campaign: Campaign) -> Optional[str]:
+    """Compose the 'yes, here's the calendar link' auto-reply. Keeps tone
+    aligned with the drip — no corporate boilerplate."""
+    name = (lead.name or "there").split()[0]
+    if campaign and campaign.calendly_url:
+        return (
+            f"Awesome, {name} — here's my calendar, grab the slot that works: "
+            f"{campaign.calendly_url}"
+        )
+    # No Calendly configured yet: promise a human follow-up so the lead
+    # doesn't go cold while the shop owner wires up their link.
+    return (
+        f"Awesome, {name} — I'll ring you back within the hour to lock a time. "
+        "If you don't hear from me, text back this number."
+    )
+
 log = get_logger("routes.messages")
 
 router = APIRouter(tags=["messages"])
@@ -102,10 +119,13 @@ async def twilio_inbound(
     db.add(inbound)
 
     # State transitions.
+    auto_reply_body: Optional[str] = None
     if intent == "stop":
         lead.state = "opted_out"
     elif intent == "yes":
         lead.state = "replied_hot"
+        campaign = db.get(Campaign, lead.campaign_id)
+        auto_reply_body = _auto_reply_for_hot(lead, campaign)
     elif intent == "no":
         lead.state = "replied_no"
     elif intent == "maybe":
@@ -124,7 +144,31 @@ async def twilio_inbound(
             Message.status == "pending",
         ).update({"status": "cancelled"}, synchronize_session=False)
 
+    # On "yes" → send the booking link as a separate outbound SMS so it
+    # lives in the message thread history.
+    if auto_reply_body and lead.phone:
+        result = send_sms(to_e164=lead.phone, body=auto_reply_body)
+        reply_msg = Message(
+            workspace_id=lead.workspace_id,
+            lead_id=lead.id,
+            campaign_id=lead.campaign_id,
+            step=99,  # sentinel = auto-reply, not a drip step
+            body=auto_reply_body,
+            direction="out",
+            sent_at=_now() if result.status in ("sent", "demo") else None,
+            status="sent" if result.status in ("sent", "demo") else "failed",
+            twilio_sid=result.sid,
+        )
+        db.add(reply_msg)
+        # Cancel remaining drip messages — we've pivoted to booking.
+        db.query(Message).filter(
+            Message.lead_id == lead.id,
+            Message.status == "pending",
+            Message.direction == "out",
+            Message.step < 99,
+        ).update({"status": "cancelled"}, synchronize_session=False)
+
     db.commit()
 
-    # Return empty TwiML so Twilio doesn't echo anything (auto-reply in M5).
+    # Return empty TwiML so Twilio doesn't echo anything.
     return Response(content="<Response/>", media_type="application/xml")
