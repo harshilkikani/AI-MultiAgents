@@ -92,6 +92,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // Integrations
+  jobberStatus: () => http("/api/integrations/jobber"),
+  jobberConnect: () => http("/api/integrations/jobber/connect", { method: "POST" }),
+  jobberCallback: (url) => http(url),
+  jobberDisconnect: () => http("/api/integrations/jobber/disconnect", { method: "POST" }),
+  jobberSync: (campaignId, cutoff_days = 180) =>
+    http(`/api/integrations/jobber/sync?campaign_id=${campaignId}&cutoff_days=${cutoff_days}`, { method: "POST" }),
+
   // Auth
   login: (email) => http("/api/auth/login", {
     method: "POST",

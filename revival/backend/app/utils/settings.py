@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
 
+    # Jobber OAuth (M18). Register the app at https://developer.getjobber.com/
+    # and use the `client credentials` + redirect URL from your app page.
+    jobber_client_id: str = ""
+    jobber_client_secret: str = ""
+    jobber_redirect_uri: str = "http://localhost:5174/integrations/jobber/callback"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

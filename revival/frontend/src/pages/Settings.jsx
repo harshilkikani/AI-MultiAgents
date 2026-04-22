@@ -128,6 +128,12 @@ export default function Settings() {
           {err && <div className="lr-error">{err}</div>}
         </form>
       </div>
+
+      <div className="lr-card">
+        <h2>Integrations</h2>
+        <p className="lr-muted">Direct CRM ingestion — kills the weekly CSV upload cycle.</p>
+        <JobberPanel />
+      </div>
     </div>
   );
 }

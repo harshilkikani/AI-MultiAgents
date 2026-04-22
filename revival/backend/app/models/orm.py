@@ -93,6 +93,12 @@ class Lead(Base):
     last_contact: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # M18 — dedup key for records that came from an external CRM (Jobber,
+    # ServiceTitan, HubSpot). The CRM's own id is stored here so re-syncs
+    # don't insert the same lead twice.
+    external_source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)  # "jobber" | ...
+    external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+
     state: Mapped[str] = mapped_column(String(32), default="queued", nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -134,6 +140,26 @@ class OptOut(Base):
     source: Mapped[str] = mapped_column(String(32), nullable=False)  # "sms_reply" | "manual" | "dnc_registry" | "webform"
     proof_message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     proof_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class JobberConnection(Base):
+    """One Jobber workspace-level OAuth connection. We store encrypted
+    tokens via app-level encryption in prod — for v0 they're stored raw
+    under the assumption that DB access itself is already privileged."""
+    __tablename__ = "jobber_connections"
+    __table_args__ = (UniqueConstraint("workspace_id", name="uq_jobber_workspace"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    account_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    access_token: Mapped[str] = mapped_column(String(2048), nullable=False)
+    refresh_token: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    scopes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    connected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_sync_stats: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)  # active | disconnected | expired
 
 
 class OwnerAlert(Base):
