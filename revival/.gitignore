@@ -10,6 +10,12 @@ venv/
 *.db-journal
 _revival_test.db
 
+# Compliance data lives outside source control in prod (customer PII).
+# The test fixture `data/dnc_deny.txt` is committed intentionally via
+# `!data/dnc_deny.txt` below.
+backend/data/*
+!backend/data/dnc_deny.txt
+
 # Node
 node_modules/
 dist/

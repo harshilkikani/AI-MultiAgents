@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -82,3 +82,37 @@ class Message(Base):
     twilio_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
     lead: Mapped[Lead] = relationship(back_populates="messages")
+
+
+class OptOut(Base):
+    """One row per (workspace, phone). Once listed, that number NEVER
+    receives another SMS from any campaign in the workspace."""
+    __tablename__ = "opt_outs"
+    __table_args__ = (UniqueConstraint("workspace_id", "phone", name="uq_opt_outs_ws_phone"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    phone: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    opted_out_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)  # "sms_reply" | "manual" | "dnc_registry" | "webform"
+    proof_message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    proof_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class ComplianceEvent(Base):
+    """Immutable audit trail. Every block / opt-out / unlock goes here so
+    regulators can read the paper trail."""
+    __tablename__ = "compliance_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    lead_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    campaign_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # event_type one of: opted_out | opt_in_restored | dnc_blocked |
+    # frequency_capped | send_allowed | manual_add
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

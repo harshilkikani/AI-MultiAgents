@@ -1,0 +1,8 @@
+# Lead Revival — local DNC deny list.
+#
+# Format: one phone per line, any format (we strip to digits). Lines
+# beginning with '#' are comments. Swap this for a real DNC API call
+# in app/services/compliance.py when the first pilot goes live.
+#
+# Test entry — hitting this number should always return blocked:
++19990000001

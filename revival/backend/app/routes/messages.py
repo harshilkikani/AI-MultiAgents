@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Campaign, Lead, Message
+from app.services.compliance import can_send, opt_out, record_event
 from app.services.reply_classifier import classify_reply
 from app.services.twilio_client import send_sms
 from app.utils.logger import get_logger
@@ -64,6 +65,21 @@ def manual_send(message_id: int, request: Request, db: Session = Depends(get_db)
         m.status = "failed"
         db.commit()
         raise HTTPException(status_code=400, detail="lead has no phone number")
+
+    decision = can_send(db, lead.phone, m.workspace_id)
+    if not decision.allowed:
+        m.status = "cancelled"
+        record_event(
+            db,
+            event_type=decision.reason,
+            workspace_id=m.workspace_id,
+            phone=lead.phone,
+            lead_id=lead.id,
+            campaign_id=m.campaign_id,
+            meta={"message_id": m.id, "detail": decision.detail, "via": "manual_send"},
+        )
+        db.commit()
+        raise HTTPException(status_code=409, detail=f"blocked: {decision.reason} — {decision.detail}")
 
     result = send_sms(to_e164=lead.phone, body=m.body)
     if result.status == "failed":
@@ -122,6 +138,19 @@ async def twilio_inbound(
     auto_reply_body: Optional[str] = None
     if intent == "stop":
         lead.state = "opted_out"
+        # Write to the global opt_outs table so NO future campaign in this
+        # workspace can ever SMS this phone again (TCPA hard rule).
+        if lead.phone:
+            opt_out(
+                db,
+                phone=lead.phone,
+                workspace_id=lead.workspace_id,
+                source="sms_reply",
+                proof_body=Body,
+                proof_message_sid=MessageSid,
+                lead_id=lead.id,
+                campaign_id=lead.campaign_id,
+            )
     elif intent == "yes":
         lead.state = "replied_hot"
         campaign = db.get(Campaign, lead.campaign_id)
@@ -145,7 +174,22 @@ async def twilio_inbound(
         ).update({"status": "cancelled"}, synchronize_session=False)
 
     # On "yes" → send the booking link as a separate outbound SMS so it
-    # lives in the message thread history.
+    # lives in the message thread history. Must still respect compliance
+    # (opt-out / DNC / freq-cap) — a bot-spoofing attacker can't trick the
+    # system into sending to a blocked number via a forged "yes".
+    if auto_reply_body and lead.phone:
+        decision = can_send(db, lead.phone, lead.workspace_id)
+        if not decision.allowed:
+            record_event(
+                db,
+                event_type=decision.reason,
+                workspace_id=lead.workspace_id,
+                phone=lead.phone,
+                lead_id=lead.id,
+                campaign_id=lead.campaign_id,
+                meta={"detail": decision.detail, "via": "auto_reply"},
+            )
+            auto_reply_body = None  # skip the send but keep state transition
     if auto_reply_body and lead.phone:
         result = send_sms(to_e164=lead.phone, body=auto_reply_body)
         reply_msg = Message(

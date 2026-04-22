@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models.orm import Campaign, Lead, Message, Workspace
 from app.services.billing import gate_generate
+from app.services.compliance import should_include_stop_footer
 from app.services.revival_templates import LeadContext, generate_revival
 from app.utils.logger import get_logger
 from app.utils.parser import extract_json
@@ -142,6 +143,11 @@ def generate_for_campaign(db: Session, campaign_id: int, workspace_id: int) -> d
             continue
         msgs = [out["initial_msg"]] + list(out["drip_msgs"])
         for step, (body, day) in enumerate(zip(msgs, DRIP_OFFSETS_DAYS)):
+            # TCPA: day-0 already has 'Reply STOP to opt out' baked in.
+            # Append a shorter STOP reminder on the mid-cadence Day-10
+            # message so the opt-out path stays visible through the drip.
+            if should_include_stop_footer(step) and "STOP" not in body.upper():
+                body = f"{body.rstrip()} (Reply STOP to end)"
             db.add(Message(
                 workspace_id=workspace_id,
                 lead_id=lead.id,
