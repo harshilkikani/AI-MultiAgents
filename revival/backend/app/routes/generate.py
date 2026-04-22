@@ -15,5 +15,7 @@ def generate(campaign_id: int, request: Request, db: Session = Depends(get_db)):
     ws = getattr(request.state, "workspace_id", 1)
     try:
         return generate_for_campaign(db=db, campaign_id=campaign_id, workspace_id=ws)
+    except PermissionError as e:
+        raise HTTPException(status_code=402, detail=str(e))  # 402 = payment required
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -20,7 +20,8 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from app.models.orm import Campaign, Lead, Message
+from app.models.orm import Campaign, Lead, Message, Workspace
+from app.services.billing import gate_generate
 from app.services.revival_templates import LeadContext, generate_revival
 from app.utils.logger import get_logger
 from app.utils.parser import extract_json
@@ -111,6 +112,15 @@ def generate_for_campaign(db: Session, campaign_id: int, workspace_id: int) -> d
     if not leads:
         return {"campaign_id": campaign_id, "leads": 0, "messages": 0, "skipped": 0}
 
+    # M8 billing gate — block if campaign is unpaid AND workspace has burned
+    # its trial allowance.
+    ws_row = db.get(Workspace, workspace_id)
+    if ws_row is None:
+        raise ValueError(f"workspace {workspace_id} does not exist")
+    block = gate_generate(db, c, ws_row, lead_count=len(leads))
+    if block:
+        raise PermissionError(block)
+
     # Clear prior generated-but-unsent messages (keep any that already sent).
     db.execute(
         delete(Message).where(
@@ -148,10 +158,16 @@ def generate_for_campaign(db: Session, campaign_id: int, workspace_id: int) -> d
             meta = f"urgency={out['urgency_score']} best_time={out['best_time_of_day']}"
             lead.notes = (lead.notes + " | " + meta) if lead.notes else meta
 
+    # Consume trial allowance only for unpaid campaigns.
+    if not bool(c.paid):
+        ws_row.trial_leads_used += len(leads)
+
     db.commit()
     return {
         "campaign_id": campaign_id,
         "leads": len(leads),
         "messages": created,
         "skipped": skipped,
+        "paid": bool(c.paid),
+        "trial_leads_used": ws_row.trial_leads_used,
     }

@@ -58,6 +58,8 @@ async def test_generate_endpoint_creates_4_messages_per_lead(app):
             f"/api/campaigns/{cid}/leads/upload",
             files={"file": ("s.csv", FIXTURE.read_bytes(), "text/csv")},
         )
+        # Fixture is 200 leads, which exceeds the 10-lead trial — mark paid.
+        await c.post("/webhooks/stripe", data={"_demo": "1", "campaign_id": str(cid), "session_id": "cs_demo"})
 
         r = await c.post(f"/api/campaigns/{cid}/generate")
         assert r.status_code == 200, r.text
@@ -77,18 +79,12 @@ async def test_messages_scheduled_at_day_0_3_10_24(app):
         r = await c.post("/api/campaigns", json={"name": "scheduling", "vertical": "hvac"})
         cid = r.json()["id"]
         # Upload tiny CSV with one lead so we can inspect timing.
-        tiny = b"name,phone\nTest User,555-0001\n"
-        await c.post(
-            f"/api/campaigns/{cid}/leads/upload",
-            files={"file": ("t.csv", tiny, "text/csv")},
-        )
-        # The seed phone 555-0001 is too short to normalize; insert via a
-        # valid one instead.
         tiny2 = b"name,phone\nTest User,229-555-0001\n"
         await c.post(
             f"/api/campaigns/{cid}/leads/upload",
             files={"file": ("t2.csv", tiny2, "text/csv")},
         )
+        # 1 lead → within trial allowance, no payment needed.
         await c.post(f"/api/campaigns/{cid}/generate")
 
     # Inspect directly via ORM to avoid needing a messages endpoint yet.

@@ -19,6 +19,11 @@ class Workspace(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
+    # Billing — trial is workspace-wide (not per campaign). First 10 leads
+    # generated against any campaign in this workspace are free.
+    trial_leads_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
 
 class Campaign(Base):
     __tablename__ = "campaigns"
