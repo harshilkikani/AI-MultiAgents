@@ -8,6 +8,7 @@ import DemoVideos from "./components/DemoVideos.jsx";
 import CallSimulator from "./components/CallSimulator.jsx";
 import Integrations from "./components/Integrations.jsx";
 import RoiCalculator from "./components/RoiCalculator.jsx";
+import PortalPreview from "./components/PortalPreview.jsx";
 import { processLead, fetchSampleLeads } from "./api";
 
 const STAGES = ["intake", "qualification", "response", "follow_up", "action", "manager_summary"];
@@ -16,7 +17,26 @@ const SPEED_MAP = { "1x": 1, "2x": 2, "5x": 5 };
 let idCounter = 1;
 const nextId = () => `id-${idCounter++}`;
 
+function useRoute() {
+  const getPath = () =>
+    (typeof window !== "undefined" ? window.location.pathname : "/") || "/";
+  const [path, setPath] = useState(getPath);
+  useEffect(() => {
+    const onPop = () => setPath(getPath());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const navigate = (to) => {
+    if (typeof window === "undefined") return;
+    window.history.pushState({}, "", to);
+    setPath(to);
+  };
+  return [path, navigate];
+}
+
 export default function App() {
+  const [path, navigate] = useRoute();
+
   // Streaming inbox
   const [leadPool, setLeadPool] = useState([]);
   const [inbox, setInbox] = useState([]);
@@ -274,6 +294,10 @@ export default function App() {
     setTimeout(() => runLead(lead), 100);
   };
 
+  if (path.replace(/\/$/, "") === "/portal-preview") {
+    return <PortalPreview onExit={() => navigate("/")} />;
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -362,6 +386,11 @@ export default function App() {
           <span>Keres · AI lead automation for septic, roofing & HVAC</span>
         </div>
         <div className="footer-meta">
+          <a
+            href="/portal-preview"
+            onClick={(e) => { e.preventDefault(); navigate("/portal-preview"); }}
+            className="footer-link"
+          >See the customer portal →</a>
           <span>© {new Date().getFullYear()} Keres</span>
         </div>
       </footer>

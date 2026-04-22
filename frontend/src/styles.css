@@ -1112,6 +1112,241 @@ textarea:focus, input:focus, select:focus { border-color: var(--accent); }
   line-height: 1.5;
 }
 
+/* ---------- Customer portal preview ---------- */
+.portal-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  min-height: 100vh;
+}
+.portal-preview-banner {
+  margin: 16px 0 20px;
+  padding: 10px 16px;
+  border: 1px dashed var(--keres);
+  background: rgba(232, 121, 60, 0.07);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.portal-preview-badge {
+  background: var(--keres);
+  color: #0b0a08;
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.portal-preview-text { color: var(--text); flex: 1; }
+.portal-preview-exit {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.portal-preview-exit:hover { color: var(--text); border-color: var(--keres); }
+
+.portal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 0 22px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.portal-brand { display: flex; align-items: center; gap: 14px; }
+.portal-brand-mark {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--keres), var(--keres-dark));
+  color: #0b0a08;
+  font-weight: 800;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.portal-brand-name { font-weight: 700; font-size: 16px; }
+.portal-brand-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.portal-clock { text-align: right; }
+.portal-clock-time { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.portal-clock-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.portal-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+@media (max-width: 1100px) { .portal-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .portal-kpis { grid-template-columns: repeat(2, 1fr); } }
+.portal-kpi {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.portal-kpi-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.portal-kpi-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.portal-kpi-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.portal-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1000px) {
+  .portal-grid { grid-template-columns: 1fr; }
+}
+.portal-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.portal-calllog { grid-row: span 2; }
+.portal-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.portal-card-head h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.portal-card-sub { font-size: 11px; color: var(--muted); }
+
+.portal-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.portal-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.portal-table td {
+  padding: 10px 10px 10px 0;
+  border-bottom: 1px dashed var(--border-soft);
+  vertical-align: top;
+}
+.portal-table tbody tr:last-child td { border-bottom: none; }
+.portal-mono { font-family: "SF Mono", Consolas, Menlo, monospace; font-size: 11.5px; color: var(--muted); }
+.portal-dim { color: var(--muted); }
+
+.portal-tag {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+}
+.portal-tag-danger { color: var(--danger); border-color: #4a1e1e; background: #1a0f10; }
+.portal-tag-warn   { color: var(--accent-2); border-color: #4a3d1e; background: #1a160f; }
+.portal-tag-ok     { color: var(--ok); border-color: #1e4a2a; background: #0f1a14; }
+.portal-tag-alt    { color: #c4a7ff; border-color: #3d2a4a; background: #150f1a; }
+.portal-tag-muted  { color: var(--muted-2); }
+
+.portal-inbox-list { display: flex; flex-direction: column; gap: 8px; }
+.portal-inbox-row {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.portal-inbox-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 3px;
+}
+.portal-inbox-name { font-weight: 600; font-size: 13px; }
+.portal-inbox-when { font-size: 11px; color: var(--muted); }
+.portal-inbox-msg { font-size: 12.5px; color: var(--muted); line-height: 1.4; margin-bottom: 4px; }
+.portal-inbox-src { font-size: 10.5px; color: var(--muted-2); text-transform: lowercase; }
+
+.portal-alerts { display: flex; flex-direction: column; gap: 8px; }
+.portal-alert {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--ok);
+  border-radius: 8px;
+}
+.portal-alert-warn { border-left-color: var(--accent-2); }
+.portal-alert-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.portal-alert-warn .portal-alert-dot { background: var(--accent-2); }
+.portal-alert-title { font-size: 12.5px; font-weight: 600; }
+.portal-alert-detail { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+.portal-integrations { display: flex; flex-direction: column; gap: 2px; }
+.portal-integration-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border-soft);
+  font-size: 12.5px;
+}
+.portal-integration-row:last-child { border-bottom: none; }
+.portal-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(143, 214, 122, 0.15);
+}
+.portal-dot-warn {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(245, 194, 107, 0.15);
+}
+.portal-integration-name { font-weight: 600; }
+.portal-integration-latency { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.portal-integration-last { font-size: 11px; color: var(--muted-2); text-align: right; }
+
+.portal-foot {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12px;
+  color: var(--muted-2);
+  text-align: center;
+  font-style: italic;
+}
+
+.footer-link {
+  color: var(--keres);
+  text-decoration: none;
+  margin-right: 12px;
+}
+.footer-link:hover { text-decoration: underline; }
+
 /* ---------- ROI calculator ---------- */
 .roi-card { margin-top: 24px; }
 .roi-card .card-head { margin-bottom: 14px; }
