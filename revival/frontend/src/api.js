@@ -1,6 +1,12 @@
-// Thin fetch wrapper. Throws on non-2xx so callers can .catch.
+import { getWorkspace } from "./ws.js";
+
+// Thin fetch wrapper. Throws on non-2xx so callers can .catch. Stamps the
+// active workspace on every request so /demo scopes to the demo workspace.
 async function http(path, opts = {}) {
-  const res = await fetch(path, opts);
+  const headers = new Headers(opts.headers || {});
+  const ws = getWorkspace();
+  if (ws && ws !== 1) headers.set("X-Workspace-Id", String(ws));
+  const res = await fetch(path, { ...opts, headers });
   if (!res.ok) {
     let detail;
     try { detail = (await res.json()).detail; } catch { detail = await res.text(); }
@@ -42,4 +48,10 @@ export const api = {
 
   manualSend: (messageId) =>
     http(`/api/messages/${messageId}/send`, { method: "POST" }),
+
+  checkout: (campaignId, plan = "one_shot") =>
+    http(`/api/campaigns/${campaignId}/checkout?plan=${plan}`, { method: "POST" }),
+
+  demoInfo: () => http("/api/demo/info"),
+  demoReset: () => http("/api/demo/reset", { method: "POST" }),
 };

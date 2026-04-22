@@ -226,6 +226,43 @@ html, body, #root {
   text-align: center;
 }
 
+/* ---------- Demo banner ---------- */
+.lr-demo-banner {
+  background: rgba(232, 121, 60, 0.1);
+  border: 1px dashed var(--keres);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.lr-demo-badge {
+  background: var(--keres);
+  color: #0b0a08;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+.lr-demo-exit {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.lr-demo-exit:hover { color: var(--text); border-color: var(--keres); }
+
 /* ---------- State counts ---------- */
 .lr-state-counts {
   display: flex;
