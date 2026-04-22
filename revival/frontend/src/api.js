@@ -1,12 +1,24 @@
+import { getToken } from "./auth.js";
 import { getWorkspace } from "./ws.js";
 
-// Thin fetch wrapper. Throws on non-2xx so callers can .catch. Stamps the
-// active workspace on every request so /demo scopes to the demo workspace.
+// Thin fetch wrapper. Throws on non-2xx so callers can .catch.
+// Stamps the workspace and bearer token on every request.
 async function http(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
   const ws = getWorkspace();
   if (ws && ws !== 1) headers.set("X-Workspace-Id", String(ws));
+  const token = getToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   const res = await fetch(path, { ...opts, headers });
+  if (res.status === 401 && !path.startsWith("/api/auth/")) {
+    // Session expired — clear token and let the app redirect to login.
+    try { window.localStorage.removeItem("lr_session_token"); } catch {}
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      window.location.assign("/login");
+    }
+  }
   if (!res.ok) {
     let detail;
     try { detail = (await res.json()).detail; } catch { detail = await res.text(); }
@@ -54,4 +66,13 @@ export const api = {
 
   demoInfo: () => http("/api/demo/info"),
   demoReset: () => http("/api/demo/reset", { method: "POST" }),
+
+  // Auth
+  login: (email) => http("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  }),
+  me: () => http("/api/auth/me"),
+  logout: () => http("/api/auth/logout", { method: "POST" }),
 };

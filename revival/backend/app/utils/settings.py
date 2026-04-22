@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     stripe_price_one_shot: str = ""
     stripe_price_monthly: str = ""
 
+    calendly_webhook_secret: str = ""
+
+    # Auth (M13). Supabase projects expose a shared JWT secret under
+    # Project Settings → API → JWT Secret. Leave blank in DEMO_MODE.
+    supabase_jwt_secret: str = ""
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

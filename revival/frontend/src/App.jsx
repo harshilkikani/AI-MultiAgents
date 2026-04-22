@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import CampaignDetail from "./pages/CampaignDetail.jsx";
 import CampaignList from "./pages/CampaignList.jsx";
 import Demo from "./pages/Demo.jsx";
+import Login from "./pages/Login.jsx";
 import RoiReport from "./pages/RoiReport.jsx";
 import Upload from "./pages/Upload.jsx";
+import { clearSession, getToken } from "./auth.js";
 import { getWorkspace, setWorkspace } from "./ws.js";
 
 function useRoute() {
@@ -26,7 +28,20 @@ export default function App() {
   const route = path.replace(/\/$/, "") || "/";
   const isReport = route.startsWith("/campaigns/") && route.endsWith("/report");
   const isDemo = route === "/demo";
+  const isLogin = route === "/login";
   const ws = getWorkspace();
+  const token = getToken();
+
+  // Gate: if no session and we're not on a public route, redirect to login.
+  useEffect(() => {
+    const publicRoutes = ["/login", "/demo"];
+    if (!token && !publicRoutes.includes(route)) {
+      navigate("/login");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, route]);
+
+  if (isLogin) return <Login navigate={navigate} />;
 
   // When user navigates away from /demo and /campaigns/*, drop back to
   // workspace 1 so "Upload" and "Campaigns" show their real workspace.
@@ -63,6 +78,10 @@ export default function App() {
              href="/campaigns" onClick={(e) => { e.preventDefault(); navigateAndScope("/campaigns"); }}>Campaigns</a>
           <a className={"lr-nav-link" + (route === "/demo" ? " active" : "")}
              href="/demo" onClick={(e) => { e.preventDefault(); navigate("/demo"); }}>Demo</a>
+          <button
+            className="lr-nav-link lr-nav-logout"
+            onClick={() => { clearSession(); setWorkspace(1); navigate("/login"); }}
+          >Sign out</button>
         </nav>
       </header>
 

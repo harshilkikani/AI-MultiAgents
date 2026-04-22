@@ -25,6 +25,31 @@ class Workspace(Base):
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
 
+class User(Base):
+    """Authenticated user. `external_id` carries the Supabase user UUID
+    (sub claim); local DEMO users get a synthetic id."""
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("external_id", name="uq_users_external_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    external_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class WorkspaceMember(Base):
+    """Membership join: a user belongs to 1+ workspaces with a role. All
+    cross-workspace lookups go through this table."""
+    __tablename__ = "workspace_members"
+    __table_args__ = (UniqueConstraint("user_id", "workspace_id", name="uq_member_user_ws"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(32), default="owner", nullable=False)  # owner | member
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Campaign(Base):
     __tablename__ = "campaigns"
 
