@@ -39,14 +39,26 @@ export const api = {
   listCampaigns: () => http("/api/campaigns"),
   getCampaign: (id) => http(`/api/campaigns/${id}`),
 
-  uploadLeads: (campaignId, file) => {
+  previewLeads: (campaignId, file, mapping) => {
     const fd = new FormData();
     fd.append("file", file);
+    if (mapping) fd.append("mapping", JSON.stringify(mapping));
+    return http(`/api/campaigns/${campaignId}/leads/preview`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  uploadLeads: (campaignId, file, mapping) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (mapping) fd.append("mapping", JSON.stringify(mapping));
     return http(`/api/campaigns/${campaignId}/leads/upload`, {
       method: "POST",
       body: fd,
     });
   },
+  sampleGenerate: (campaignId, n = 3) =>
+    http(`/api/campaigns/${campaignId}/sample-generate?n=${n}`, { method: "POST" }),
   listLeads: (campaignId, state) => {
     const q = state ? `?state=${encodeURIComponent(state)}` : "";
     return http(`/api/campaigns/${campaignId}/leads${q}`);

@@ -1,14 +1,16 @@
 # Why this exists: CSV upload endpoint + per-campaign lead listing.
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+import json
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Campaign, Lead
 from app.models.schemas import LeadOut, UploadResult
-from app.services.csv_ingest import parse_csv
+from app.services.csv_ingest import parse_csv, preview_csv
 
 router = APIRouter(prefix="/api/campaigns", tags=["leads"])
 
@@ -19,11 +21,45 @@ def _ws(request: Request) -> int:
     return getattr(request.state, "workspace_id", 1)
 
 
+@router.post("/{campaign_id}/leads/preview")
+async def preview_leads(
+    campaign_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    mapping: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+):
+    """Dry-run CSV parse. No rows persisted — just shows the mapping and
+    first 10 normalized rows so the owner can confirm before committing."""
+    ws = _ws(request)
+    c = db.get(Campaign, campaign_id)
+    if not c or c.workspace_id != ws:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="file must be a .csv")
+
+    content = await file.read()
+    if len(content) > MAX_CSV_BYTES:
+        raise HTTPException(status_code=413, detail=f"csv too large (> {MAX_CSV_BYTES // 1024 // 1024} MB)")
+
+    override = None
+    if mapping:
+        try:
+            override = json.loads(mapping)
+            if not isinstance(override, dict):
+                raise ValueError("mapping must be an object")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"bad mapping json: {e}")
+
+    return preview_csv(content, override_mapping=override)
+
+
 @router.post("/{campaign_id}/leads/upload", response_model=UploadResult)
 async def upload_leads(
     campaign_id: int,
     request: Request,
     file: UploadFile = File(...),
+    mapping: str | None = Form(default=None),
     db: Session = Depends(get_db),
 ) -> UploadResult:
     ws = _ws(request)
@@ -38,7 +74,16 @@ async def upload_leads(
     if len(content) > MAX_CSV_BYTES:
         raise HTTPException(status_code=413, detail=f"csv too large (> {MAX_CSV_BYTES // 1024 // 1024} MB)")
 
-    leads, skipped = parse_csv(content)
+    override = None
+    if mapping:
+        try:
+            override = json.loads(mapping)
+            if not isinstance(override, dict):
+                raise ValueError("mapping must be an object")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"bad mapping json: {e}")
+
+    leads, skipped = parse_csv(content, override_mapping=override)
     inserted = 0
     for ld in leads:
         db.add(Lead(

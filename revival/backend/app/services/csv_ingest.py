@@ -122,32 +122,96 @@ def _norm_email(raw: Optional[str]) -> Optional[str]:
 
 
 def build_header_map(headers: list[str]) -> dict[str, str]:
-    """Return {canonical_field: actual_header}. Missing = not in output."""
+    """Return {canonical_field: actual_header}. Missing = not in output.
+
+    Matching is layered:
+      1. Exact alias match (fast path, via HEADER_ALIASES).
+      2. Fuzzy match (edit distance / difflib) for headers that didn't
+         exact-match. This catches "Customer_Name" vs "customer name",
+         "Primary-Phone" vs "Primary Phone", unpredictable CSV exports.
+    """
+    import difflib
+
     out: dict[str, str] = {}
+    unmatched: list[str] = []
     for h in headers:
         canon = HEADER_ALIASES.get(_norm_header(h))
         if canon and canon not in out:
             out[canon] = h
+        else:
+            unmatched.append(h)
+
+    # Fuzzy pass — try to fit leftover headers into still-missing canonical
+    # slots. cutoff=0.7 catches "frst nm" → "first_name" without wild
+    # false positives.
+    missing_canons = [c for c in CANON_FIELDS if c not in out]
+    alias_keys = list(HEADER_ALIASES.keys())
+    for h in unmatched:
+        normed = _norm_header(h)
+        if not normed:
+            continue
+        matches = difflib.get_close_matches(normed, alias_keys, n=1, cutoff=0.72)
+        if matches:
+            canon = HEADER_ALIASES[matches[0]]
+            if canon in missing_canons:
+                out[canon] = h
+                missing_canons.remove(canon)
     return out
 
 
-def parse_csv(content: bytes | str) -> tuple[list[NormalizedLead], list[str]]:
+def header_map_override(headers: list[str], override: dict[str, str]) -> dict[str, str]:
+    """Apply user-supplied mapping. Keys are canonical fields; values are
+    the actual header names. Unknown / blank values are dropped."""
+    out: dict[str, str] = {}
+    for canon, actual in (override or {}).items():
+        if canon not in CANON_FIELDS:
+            continue
+        if actual and actual in headers:
+            out[canon] = actual
+    return out
+
+
+def parse_csv(
+    content: bytes | str,
+    override_mapping: Optional[dict[str, str]] = None,
+) -> tuple[list[NormalizedLead], list[str]]:
     """Parse a CSV blob. Returns (leads, skipped_reasons).
 
-    A row is skipped only if it has neither phone nor email AND no name —
-    i.e., there's literally nothing to work with. Missing phone alone is
-    fine because we can still classify-and-stash for manual review later.
+    A row is skipped if it has no name, or has neither phone nor email.
+    Pass `override_mapping` to force specific header-to-canonical bindings
+    (from the mapping-confirm UI step).
     """
+    leads, skipped, _headers, _hm = _parse_csv_full(content, override_mapping)
+    return leads, skipped
+
+
+def _parse_csv_full(
+    content: bytes | str,
+    override_mapping: Optional[dict[str, str]] = None,
+) -> tuple[list[NormalizedLead], list[str], list[str], dict[str, str]]:
+    """Internal: returns leads, skipped, all headers, and the effective
+    header mapping so callers can show it to the user."""
     if isinstance(content, bytes):
         content = content.decode("utf-8-sig", errors="replace")
 
     reader = csv.DictReader(io.StringIO(content))
-    if not reader.fieldnames:
-        return [], ["csv has no header row"]
+    headers = list(reader.fieldnames or [])
+    if not headers:
+        return [], ["csv has no header row"], [], {}
 
-    header_map = build_header_map(reader.fieldnames)
+    header_map = build_header_map(headers)
+    # Overlay any explicit override from the UI (user may correct fuzzy
+    # mismatches or pick a different column).
+    if override_mapping:
+        header_map = {**header_map, **header_map_override(headers, override_mapping)}
+
     if "name" not in header_map:
-        return [], [f"could not find a 'name' column; saw: {reader.fieldnames}"]
+        return (
+            [],
+            [f"could not find a 'name' column; saw: {headers}"],
+            headers,
+            header_map,
+        )
 
     leads: list[NormalizedLead] = []
     skipped: list[str] = []
@@ -170,4 +234,32 @@ def parse_csv(content: bytes | str) -> tuple[list[NormalizedLead], list[str]]:
             name=name, phone=phone, email=email, source=source,
             last_contact=last_contact, notes=notes,
         ))
-    return leads, skipped
+    return leads, skipped, headers, header_map
+
+
+def preview_csv(
+    content: bytes | str,
+    override_mapping: Optional[dict[str, str]] = None,
+    preview_limit: int = 10,
+) -> dict:
+    """Parse + summarize a CSV WITHOUT persisting. Used by the mapping UI
+    so owners can eyeball header detection before committing 5k rows."""
+    leads, skipped, headers, header_map = _parse_csv_full(content, override_mapping)
+    return {
+        "all_headers": headers,
+        "mapping": header_map,
+        "unmapped_headers": [h for h in headers if h not in header_map.values()],
+        "canonical_fields": list(CANON_FIELDS),
+        "total_valid": len(leads),
+        "total_skipped": len(skipped),
+        "skipped_reasons": skipped[:20],
+        "preview": [
+            {
+                "name": l.name, "phone": l.phone, "email": l.email,
+                "source": l.source,
+                "last_contact": l.last_contact.isoformat() if l.last_contact else None,
+                "notes": l.notes,
+            }
+            for l in leads[:preview_limit]
+        ],
+    }
