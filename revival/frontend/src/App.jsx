@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import CampaignDetail from "./pages/CampaignDetail.jsx";
+import CampaignList from "./pages/CampaignList.jsx";
+import RoiReport from "./pages/RoiReport.jsx";
 import Upload from "./pages/Upload.jsx";
 
 function useRoute() {
@@ -19,10 +22,11 @@ function useRoute() {
 export default function App() {
   const [path, navigate] = useRoute();
   const route = path.replace(/\/$/, "") || "/";
+  const isReport = route.startsWith("/campaigns/") && route.endsWith("/report");
 
   return (
     <div className="lr-app">
-      <header className="lr-header">
+      <header className="lr-header no-print">
         <div className="lr-brand">
           <div className="lr-brand-mark">LR</div>
           <div>
@@ -40,31 +44,24 @@ export default function App() {
 
       <main className="lr-main">
         {route === "/" && <Upload onCreated={(id) => navigate(`/campaigns/${id}`)} />}
-        {route === "/campaigns" && <CampaignsPlaceholder />}
-        {route.startsWith("/campaigns/") && <CampaignDetailPlaceholder id={route.split("/")[2]} />}
+        {route === "/campaigns" && <CampaignList onPick={(id) => navigate(`/campaigns/${id}`)} />}
+        {route.startsWith("/campaigns/") && !isReport && (
+          <CampaignDetail
+            id={Number(route.split("/")[2])}
+            onOpenReport={(id) => navigate(`/campaigns/${id}/report`)}
+          />
+        )}
+        {isReport && (
+          <RoiReport
+            id={Number(route.split("/")[2])}
+            onBack={() => navigate(`/campaigns/${route.split("/")[2]}`)}
+          />
+        )}
       </main>
 
-      <footer className="lr-footer">
+      <footer className="lr-footer no-print">
         Preview build · DEMO_MODE · no real SMS sent · no cards charged.
       </footer>
-    </div>
-  );
-}
-
-function CampaignsPlaceholder() {
-  return (
-    <div className="lr-card">
-      <h2>Campaigns</h2>
-      <p className="lr-muted">Campaign list + state counts land in M6.</p>
-    </div>
-  );
-}
-
-function CampaignDetailPlaceholder({ id }) {
-  return (
-    <div className="lr-card">
-      <h2>Campaign #{id}</h2>
-      <p className="lr-muted">Lead table, message threads, and ROI report land in M6.</p>
     </div>
   );
 }

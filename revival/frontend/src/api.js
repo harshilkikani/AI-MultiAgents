@@ -33,4 +33,13 @@ export const api = {
     const q = state ? `?state=${encodeURIComponent(state)}` : "";
     return http(`/api/campaigns/${campaignId}/leads${q}`);
   },
+
+  generate: (campaignId) =>
+    http(`/api/campaigns/${campaignId}/generate`, { method: "POST" }),
+  stats: (campaignId) => http(`/api/campaigns/${campaignId}/stats`),
+  leadMessages: (campaignId, leadId) =>
+    http(`/api/campaigns/${campaignId}/leads/${leadId}/messages`),
+
+  manualSend: (messageId) =>
+    http(`/api/messages/${messageId}/send`, { method: "POST" }),
 };
