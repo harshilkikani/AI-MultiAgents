@@ -79,6 +79,15 @@ export const api = {
   demoInfo: () => http("/api/demo/info"),
   demoReset: () => http("/api/demo/reset", { method: "POST" }),
 
+  // Workspace settings
+  getWorkspaceSettings: () => http("/api/workspace"),
+  updateWorkspaceSettings: (body) =>
+    http("/api/workspace", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
   // Auth
   login: (email) => http("/api/auth/login", {
     method: "POST",

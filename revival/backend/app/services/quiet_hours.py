@@ -91,3 +91,20 @@ def is_within_quiet_window(phone: Optional[str], now_utc: Optional[datetime] = N
         now = now.replace(tzinfo=ZoneInfo("UTC"))
     local = now.astimezone(tz)
     return QUIET_START_HOUR <= local.hour < QUIET_END_HOUR
+
+
+def is_within_owner_window(
+    tz_name: Optional[str],
+    now_utc: Optional[datetime] = None,
+) -> bool:
+    """Owner-alert variant: check quiet hours against an explicit IANA tz
+    name (stored on the workspace). Unknown/blank → ET default."""
+    try:
+        tz = ZoneInfo(tz_name) if tz_name else ZoneInfo(_DEFAULT_TZ)
+    except Exception:
+        tz = ZoneInfo(_DEFAULT_TZ)
+    now = now_utc or datetime.now(tz=ZoneInfo("UTC"))
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=ZoneInfo("UTC"))
+    local = now.astimezone(tz)
+    return QUIET_START_HOUR <= local.hour < QUIET_END_HOUR

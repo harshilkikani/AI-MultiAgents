@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Campaign, Lead, Message
+from app.services.alerts import fire_alert
 from app.services.compliance import can_send, opt_out, record_event
 from app.services.reply_classifier import classify_reply
 from app.services.twilio_client import send_sms
@@ -219,6 +220,20 @@ async def twilio_inbound(
         ).update({"status": "cancelled"}, synchronize_session=False)
 
     db.commit()
+
+    # M16 — buzz the shop owner. Happens AFTER commit so the replied_hot
+    # state is queryable when the alert path runs. Alert errors must not
+    # surface to Twilio — they silent-fail and log.
+    if intent == "yes":
+        try:
+            fire_alert(
+                db,
+                workspace_id=lead.workspace_id,
+                lead_id=lead.id,
+                alert_type="replied_hot",
+            )
+        except Exception as e:
+            log.exception("owner alert (replied_hot) failed: %s", e)
 
     # Return empty TwiML so Twilio doesn't echo anything.
     return Response(content="<Response/>", media_type="application/xml")

@@ -347,6 +347,17 @@ html, body, #root {
   display: flex; flex-direction: column; gap: 8px;
 }
 
+/* ---------- Settings ---------- */
+.lr-settings { max-width: 720px; margin: 0 auto; }
+.lr-settings .lr-card h3 {
+  margin-top: 18px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--keres);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 /* ---------- Login ---------- */
 .lr-login {
   max-width: 460px;

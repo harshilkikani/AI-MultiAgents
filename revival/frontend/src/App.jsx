@@ -4,6 +4,7 @@ import CampaignList from "./pages/CampaignList.jsx";
 import Demo from "./pages/Demo.jsx";
 import Login from "./pages/Login.jsx";
 import RoiReport from "./pages/RoiReport.jsx";
+import Settings from "./pages/Settings.jsx";
 import Upload from "./pages/Upload.jsx";
 import { clearSession, getToken } from "./auth.js";
 import { getWorkspace, setWorkspace } from "./ws.js";
@@ -76,6 +77,8 @@ export default function App() {
              href="/" onClick={(e) => { e.preventDefault(); navigateAndScope("/"); }}>Upload</a>
           <a className={"lr-nav-link" + (route === "/campaigns" ? " active" : "")}
              href="/campaigns" onClick={(e) => { e.preventDefault(); navigateAndScope("/campaigns"); }}>Campaigns</a>
+          <a className={"lr-nav-link" + (route === "/settings" ? " active" : "")}
+             href="/settings" onClick={(e) => { e.preventDefault(); navigateAndScope("/settings"); }}>Settings</a>
           <a className={"lr-nav-link" + (route === "/demo" ? " active" : "")}
              href="/demo" onClick={(e) => { e.preventDefault(); navigate("/demo"); }}>Demo</a>
           <button
@@ -88,6 +91,7 @@ export default function App() {
       <main className="lr-main">
         {route === "/" && <Upload onCreated={(id) => navigate(`/campaigns/${id}`)} />}
         {route === "/demo" && <Demo navigate={navigate} />}
+        {route === "/settings" && <Settings />}
         {route === "/campaigns" && <CampaignList onPick={(id) => navigate(`/campaigns/${id}`)} />}
         {route.startsWith("/campaigns/") && !isReport && (
           <CampaignDetail

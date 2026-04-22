@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Lead
+from app.services.alerts import fire_alert
 from app.services.webhook_auth import verify_calendly_request
 from app.utils.logger import get_logger
 
@@ -76,6 +77,15 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_db)):
     if lead.state in ("replied_hot", "contacted"):
         lead.state = "booked"
         db.commit()
+        try:
+            fire_alert(
+                db,
+                workspace_id=lead.workspace_id,
+                lead_id=lead.id,
+                alert_type="booked",
+            )
+        except Exception as e:
+            log.exception("owner alert (booked) failed: %s", e)
         return {"ok": True, "matched": True, "lead_id": lead.id, "state": lead.state}
 
     return {"ok": True, "matched": True, "lead_id": lead.id, "state": lead.state, "no_change": True}

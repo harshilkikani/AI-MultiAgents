@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import SessionLocal, init_db
-from app.routes import auth, billing, bookings, campaigns, compliance, demo, generate, leads, messages, reports
+from app.routes import auth, billing, bookings, campaigns, compliance, demo, generate, leads, messages, reports, workspace
 from app.services.auth import resolve_auth_context
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.utils.settings import get_settings
@@ -122,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(demo.router)
     app.include_router(compliance.router)
     app.include_router(auth.router)
+    app.include_router(workspace.router)
 
     return app
 

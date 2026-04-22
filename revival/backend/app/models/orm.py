@@ -24,6 +24,13 @@ class Workspace(Base):
     trial_leads_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
+    # M16 — owner alert routing. When a lead replies hot or books, we ping
+    # the shop owner ASAP on these channels (SMS first, Slack second).
+    owner_phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    owner_email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    owner_timezone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    slack_webhook_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
 
 class User(Base):
     """Authenticated user. `external_id` carries the Supabase user UUID
@@ -122,6 +129,23 @@ class OptOut(Base):
     source: Mapped[str] = mapped_column(String(32), nullable=False)  # "sms_reply" | "manual" | "dnc_registry" | "webform"
     proof_message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     proof_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class OwnerAlert(Base):
+    """Audit + dedup record for alerts we fire to a shop owner. Prevents
+    spamming the same 'lead X replied hot' alert more than once per 4h."""
+    __tablename__ = "owner_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    lead_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    campaign_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    alert_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)  # replied_hot | booked
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)                 # sms | slack | email
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    twilio_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="sent")  # sent | failed | skipped
 
 
 class ComplianceEvent(Base):
