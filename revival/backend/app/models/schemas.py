@@ -28,6 +28,8 @@ class CampaignOut(BaseModel):
     launched_at: Optional[datetime]
     paid: bool
     trial_leads_used: int
+    paused: bool = False
+    paused_at: Optional[datetime] = None
     lead_count: int = 0
 
     class Config:

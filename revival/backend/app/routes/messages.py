@@ -63,6 +63,11 @@ def manual_send(message_id: int, request: Request, db: Session = Depends(get_db)
         db.commit()
         raise HTTPException(status_code=400, detail=f"lead is in terminal state: {lead.state if lead else 'missing'}")
 
+    # M17 — manual send also gated by campaign pause.
+    campaign = db.get(Campaign, m.campaign_id)
+    if campaign is not None and bool(campaign.paused):
+        raise HTTPException(status_code=409, detail="campaign is paused")
+
     if not lead.phone:
         m.status = "failed"
         db.commit()

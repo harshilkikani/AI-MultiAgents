@@ -66,6 +66,10 @@ export const api = {
 
   generate: (campaignId) =>
     http(`/api/campaigns/${campaignId}/generate`, { method: "POST" }),
+  pauseCampaign: (campaignId) =>
+    http(`/api/campaigns/${campaignId}/pause`, { method: "POST" }),
+  resumeCampaign: (campaignId) =>
+    http(`/api/campaigns/${campaignId}/resume`, { method: "POST" }),
   stats: (campaignId) => http(`/api/campaigns/${campaignId}/stats`),
   leadMessages: (campaignId, leadId) =>
     http(`/api/campaigns/${campaignId}/leads/${leadId}/messages`),

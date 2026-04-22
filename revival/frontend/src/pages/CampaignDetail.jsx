@@ -44,21 +44,58 @@ export default function CampaignDetail({ id, onOpenReport }) {
     }
   };
 
+  const togglePause = async () => {
+    if (!campaign) return;
+    setBusy(true); setErr(null);
+    try {
+      if (campaign.paused) await api.resumeCampaign(id);
+      else                 await api.pauseCampaign(id);
+      await refresh();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (err) return <div className="lr-card lr-error">{err}</div>;
   if (!campaign) return <div className="lr-card lr-muted">Loading…</div>;
 
   return (
     <div className="lr-detail">
+      {campaign.paused && (
+        <div className="lr-pause-banner">
+          <div>
+            <strong>Campaign paused.</strong> Scheduled sends are on hold; manual sends are blocked.
+            {campaign.paused_at && (
+              <span className="lr-muted"> Since {new Date(campaign.paused_at).toLocaleString()}.</span>
+            )}
+          </div>
+          <button className="lr-btn lr-btn-small" onClick={togglePause} disabled={busy}>
+            {busy ? "Resuming…" : "Resume"}
+          </button>
+        </div>
+      )}
+
       <div className="lr-card">
         <div className="lr-detail-head">
           <div>
-            <h1>#{campaign.id} · {campaign.name}</h1>
+            <h1>#{campaign.id} · {campaign.name}
+              {campaign.paused && <span className="lr-paused-badge">PAUSED</span>}
+            </h1>
             <div className="lr-muted">
               {campaign.vertical} · avg ${Math.round(campaign.avg_ticket).toLocaleString()} ·
               {campaign.calendly_url ? <> Calendly connected</> : <> no Calendly link set</>}
             </div>
           </div>
           <div className="lr-detail-actions">
+            <button
+              className={"lr-btn lr-btn-secondary" + (campaign.paused ? " lr-btn-warn" : "")}
+              onClick={togglePause}
+              disabled={busy}
+            >
+              {campaign.paused ? "Resume campaign" : "Pause campaign"}
+            </button>
             <button className="lr-btn lr-btn-secondary" onClick={runGenerate} disabled={busy}>
               {busy ? "Generating…" : "Regenerate messages"}
             </button>

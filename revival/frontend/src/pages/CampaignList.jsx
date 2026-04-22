@@ -46,7 +46,10 @@ export default function CampaignList({ onPick }) {
           <div key={c.id} className="lr-card lr-campaign-card" onClick={() => onPick?.(c.id)}>
             <div className="lr-campaign-head">
               <div>
-                <div className="lr-campaign-name">#{c.id} · {c.name}</div>
+                <div className="lr-campaign-name">
+                  #{c.id} · {c.name}
+                  {c.paused && <span className="lr-paused-badge">PAUSED</span>}
+                </div>
                 <div className="lr-campaign-sub">
                   {c.vertical} · avg ${Math.round(c.avg_ticket).toLocaleString()} · {c.lead_count} leads
                   {c.paid ? " · paid" : " · unpaid"}

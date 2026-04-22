@@ -71,6 +71,11 @@ class Campaign(Base):
     paid: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)  # 0/1 for sqlite simplicity
     trial_leads_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # M17 — paused campaigns are skipped by the scheduler and can't send
+    # via manual-send either. Owner toggles via POST /pause or /resume.
+    paused: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)
+    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     leads: Mapped[list["Lead"]] = relationship(back_populates="campaign", cascade="all, delete-orphan")
 
 

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models.orm import Lead, Message
+from app.models.orm import Campaign, Lead, Message
 from app.services.compliance import can_send, record_event
 from app.services.quiet_hours import is_within_quiet_window
 from app.services.twilio_client import send_sms
@@ -37,11 +37,13 @@ def tick(db: Optional[Session] = None) -> dict:
         due = db.scalars(
             select(Message)
             .join(Lead, Lead.id == Message.lead_id)
+            .join(Campaign, Campaign.id == Message.campaign_id)
             .where(
                 Message.status == "pending",
                 Message.direction == "out",
                 Message.scheduled_for <= now,
                 Lead.state.in_(_ACTIVE_STATES),
+                Campaign.paused == 0,   # M17: skip paused campaigns
             )
             .order_by(Message.scheduled_for.asc())
         ).all()

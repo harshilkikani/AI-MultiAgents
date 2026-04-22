@@ -23,6 +23,7 @@ def _to_out(c: Campaign, lead_count: int) -> CampaignOut:
         avg_ticket=c.avg_ticket, calendly_url=c.calendly_url,
         created_at=c.created_at, launched_at=c.launched_at,
         paid=bool(c.paid), trial_leads_used=c.trial_leads_used,
+        paused=bool(c.paused), paused_at=c.paused_at,
         lead_count=lead_count,
     )
 
@@ -65,3 +66,36 @@ def get_campaign(campaign_id: int, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="campaign not found")
     n = db.scalar(select(func.count(Lead.id)).where(Lead.campaign_id == c.id))
     return _to_out(c, int(n or 0))
+
+
+def _lead_count(db: Session, campaign_id: int) -> int:
+    return int(db.scalar(select(func.count(Lead.id)).where(Lead.campaign_id == campaign_id)) or 0)
+
+
+@router.post("/{campaign_id}/pause", response_model=CampaignOut)
+def pause_campaign(campaign_id: int, request: Request, db: Session = Depends(get_db)) -> CampaignOut:
+    from datetime import UTC, datetime
+    ws = _ws(request)
+    c = db.get(Campaign, campaign_id)
+    if not c or c.workspace_id != ws:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    if not c.paused:
+        c.paused = 1
+        c.paused_at = datetime.now(UTC).replace(tzinfo=None)
+        db.commit()
+        db.refresh(c)
+    return _to_out(c, _lead_count(db, c.id))
+
+
+@router.post("/{campaign_id}/resume", response_model=CampaignOut)
+def resume_campaign(campaign_id: int, request: Request, db: Session = Depends(get_db)) -> CampaignOut:
+    ws = _ws(request)
+    c = db.get(Campaign, campaign_id)
+    if not c or c.workspace_id != ws:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    if c.paused:
+        c.paused = 0
+        c.paused_at = None
+        db.commit()
+        db.refresh(c)
+    return _to_out(c, _lead_count(db, c.id))
