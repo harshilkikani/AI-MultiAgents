@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Campaign, Lead
-from app.models.schemas import VERTICALS, CampaignCreate, CampaignOut
+from app.models.schemas import VERTICALS, CampaignCreate, CampaignOut, CampaignUpdate
 
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
 
@@ -21,6 +21,7 @@ def _to_out(c: Campaign, lead_count: int) -> CampaignOut:
     return CampaignOut(
         id=c.id, workspace_id=c.workspace_id, name=c.name, vertical=c.vertical,
         avg_ticket=c.avg_ticket, calendly_url=c.calendly_url,
+        tone_notes=c.tone_notes,
         created_at=c.created_at, launched_at=c.launched_at,
         paid=bool(c.paid), trial_leads_used=c.trial_leads_used,
         paused=bool(c.paused), paused_at=c.paused_at,
@@ -38,6 +39,7 @@ def create_campaign(payload: CampaignCreate, request: Request, db: Session = Dep
         vertical=payload.vertical,
         avg_ticket=payload.avg_ticket,
         calendly_url=payload.calendly_url,
+        tone_notes=payload.tone_notes,
     )
     db.add(c)
     db.commit()
@@ -66,6 +68,30 @@ def get_campaign(campaign_id: int, request: Request, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="campaign not found")
     n = db.scalar(select(func.count(Lead.id)).where(Lead.campaign_id == c.id))
     return _to_out(c, int(n or 0))
+
+
+@router.patch("/{campaign_id}", response_model=CampaignOut)
+def update_campaign(
+    campaign_id: int,
+    payload: CampaignUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> CampaignOut:
+    ws = _ws(request)
+    c = db.get(Campaign, campaign_id)
+    if not c or c.workspace_id != ws:
+        raise HTTPException(status_code=404, detail="campaign not found")
+    if payload.name is not None:
+        c.name = payload.name.strip() or c.name
+    if payload.avg_ticket is not None:
+        c.avg_ticket = float(payload.avg_ticket)
+    if payload.calendly_url is not None:
+        c.calendly_url = payload.calendly_url.strip() or None
+    if payload.tone_notes is not None:
+        c.tone_notes = payload.tone_notes.strip() or None
+    db.commit()
+    db.refresh(c)
+    return _to_out(c, _lead_count(db, c.id))
 
 
 def _lead_count(db: Session, campaign_id: int) -> int:

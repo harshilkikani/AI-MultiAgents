@@ -15,6 +15,15 @@ class CampaignCreate(BaseModel):
     vertical: str
     avg_ticket: float = 680.0
     calendly_url: Optional[str] = None
+    tone_notes: Optional[str] = None
+
+
+class CampaignUpdate(BaseModel):
+    """Fields the owner can edit. All optional — only provided fields change."""
+    name: Optional[str] = None
+    avg_ticket: Optional[float] = None
+    calendly_url: Optional[str] = None
+    tone_notes: Optional[str] = None
 
 
 class CampaignOut(BaseModel):
@@ -24,6 +33,7 @@ class CampaignOut(BaseModel):
     vertical: str
     avg_ticket: float
     calendly_url: Optional[str]
+    tone_notes: Optional[str] = None
     created_at: datetime
     launched_at: Optional[datetime]
     paid: bool

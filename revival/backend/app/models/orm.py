@@ -76,6 +76,11 @@ class Campaign(Base):
     paused: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)
     paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # M19 — free-text tone override. Appended to the user prompt so the
+    # owner can say "keep it gruff" or "we're in Austin, don't say y'all,
+    # it sounds forced" without touching the base system prompt.
+    tone_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     leads: Mapped[list["Lead"]] = relationship(back_populates="campaign", cascade="all, delete-orphan")
 
 

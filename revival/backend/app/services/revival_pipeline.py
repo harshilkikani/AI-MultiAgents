@@ -43,7 +43,15 @@ class RevivalOutput(BaseModel):
 DRIP_OFFSETS_DAYS = (0, 3, 10, 24)  # day-0 (initial), day-3, day-10, day-24
 
 
-def _load_prompt() -> str:
+def _load_prompt(vertical: Optional[str] = None) -> str:
+    """Load the per-vertical system prompt if one exists; fall back to the
+    generic revival_system.txt. Each file is cached by the Anthropic
+    prompt-cache layer since system blocks stay identical across calls
+    within a vertical."""
+    if vertical:
+        candidate = _PROMPTS_DIR / f"revival_{vertical}.txt"
+        if candidate.exists():
+            return candidate.read_text(encoding="utf-8")
     return (_PROMPTS_DIR / "revival_system.txt").read_text(encoding="utf-8")
 
 
@@ -61,11 +69,15 @@ def _build_context(lead: Lead, avg_ticket: float) -> LeadContext:
     )
 
 
-def _claude_generate(ctx: LeadContext) -> dict:
-    """Real path: one Claude call per lead. Kept tight to land under the
-    300-token budget from the acceptance criteria."""
-    from app.utils.llm_client import call_claude  # local import: avoid triggering Anthropic client in DEMO
-    system = _load_prompt()
+def _claude_generate(ctx: LeadContext, tone_notes: Optional[str] = None) -> dict:
+    """Real path: one Claude call per lead. Uses the per-vertical system
+    prompt + optional owner tone-notes appended to the user prompt (so the
+    system-prompt cache stays hot across campaigns in the same vertical)."""
+    from app.utils.llm_client import call_claude
+    system = _load_prompt(ctx.vertical)
+    tone_block = ""
+    if tone_notes and tone_notes.strip():
+        tone_block = f"\nOWNER TONE NOTES (follow these):\n{tone_notes.strip()}\n"
     user = (
         "LEAD CONTEXT:\n"
         f"- name: {ctx.name}\n"
@@ -75,6 +87,7 @@ def _claude_generate(ctx: LeadContext) -> dict:
         f"- age_days: {ctx.age_days if ctx.age_days is not None else 'unknown'}\n"
         f"- avg_ticket: ${ctx.avg_ticket:.0f}\n"
         f"- notes: {ctx.notes or ''}\n"
+        f"{tone_block}"
         "\nReturn the JSON object only."
     )
     raw = call_claude(system, user, max_tokens=600, use_cache=True)
@@ -87,11 +100,11 @@ def _claude_generate(ctx: LeadContext) -> dict:
         return generate_revival(ctx)
 
 
-def _generate_one(lead: Lead, avg_ticket: float) -> dict:
+def _generate_one(lead: Lead, avg_ticket: float, tone_notes: Optional[str] = None) -> dict:
     ctx = _build_context(lead, avg_ticket=avg_ticket)
     if get_settings().demo_mode:
         return generate_revival(ctx)
-    return _claude_generate(ctx)
+    return _claude_generate(ctx, tone_notes=tone_notes)
 
 
 def _schedule_for(base: datetime, day_offset: int) -> datetime:
@@ -136,7 +149,7 @@ def generate_for_campaign(db: Session, campaign_id: int, workspace_id: int) -> d
     skipped = 0
     for lead in leads:
         try:
-            out = _generate_one(lead, avg_ticket=c.avg_ticket)
+            out = _generate_one(lead, avg_ticket=c.avg_ticket, tone_notes=c.tone_notes)
         except Exception as e:
             log.error("generate failed for lead %s: %s", lead.id, e)
             skipped += 1
