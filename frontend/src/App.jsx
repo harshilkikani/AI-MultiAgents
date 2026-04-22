@@ -5,6 +5,7 @@ import ActivityFeed from "./components/ActivityFeed.jsx";
 import Results from "./components/Results.jsx";
 import LeadForm from "./components/LeadForm.jsx";
 import DemoVideos from "./components/DemoVideos.jsx";
+import CallSimulator from "./components/CallSimulator.jsx";
 import { processLead, fetchSampleLeads } from "./api";
 
 const STAGES = ["intake", "qualification", "response", "follow_up", "action", "manager_summary"];
@@ -47,6 +48,7 @@ export default function App() {
   const [demoRunning, setDemoRunning] = useState(false);
   const [speed, setSpeed] = useState("2x");
   const [showManual, setShowManual] = useState(false);
+  const [showCallSim, setShowCallSim] = useState(false);
   const streamTimerRef = useRef(null);
   const clockRef = useRef(null);
   const queuedRef = useRef([]);
@@ -310,6 +312,21 @@ export default function App() {
         <div className="manual-form-wrapper">
           <LeadForm onRun={handleManualRun} loading={loading} />
         </div>
+      )}
+
+      <div className="call-cta-row">
+        <button className="call-cta-btn" onClick={() => setShowCallSim(true)}>
+          <span className="call-cta-icon">📞</span>
+          <span className="call-cta-text">
+            <span className="call-cta-title">Watch it answer a call</span>
+            <span className="call-cta-sub">Staged voice demo · septic · roofing · HVAC</span>
+          </span>
+          <span className="call-cta-arrow">→</span>
+        </button>
+      </div>
+
+      {showCallSim && (
+        <CallSimulator onClose={() => setShowCallSim(false)} />
       )}
 
       <div className="main-grid">
