@@ -14,8 +14,8 @@ from app.services.billing import (
     ONE_SHOT_PLAN,
     create_checkout_session,
     mark_campaign_paid,
-    verify_stripe_signature,
 )
+from app.services.webhook_auth import verify_stripe_event
 from app.utils.logger import get_logger
 from app.utils.settings import get_settings
 
@@ -99,20 +99,20 @@ async def stripe_webhook(
         except Exception as e:
             log.info("demo webhook parse fallthrough: %s", e)
 
-    # Real Stripe path.
-    if settings.stripe_webhook_secret:
-        if not verify_stripe_signature(body, stripe_signature or "", settings.stripe_webhook_secret):
-            raise HTTPException(status_code=400, detail="bad signature")
+    # Real Stripe path — uses stripe.Webhook.construct_event which enforces
+    # the 5-minute timestamp tolerance and rejects replays for us.
+    event = await verify_stripe_event(request, body)
+    if event is None:
+        raise HTTPException(status_code=403, detail="invalid stripe signature")
 
-    try:
-        event = json.loads(body.decode("utf-8") or "{}")
-    except Exception:
-        raise HTTPException(status_code=400, detail="invalid json")
+    # construct_event returns a Stripe Event object (dict-like).
+    event_type = event.get("type") if isinstance(event, dict) else getattr(event, "type", None)
+    if event_type != "checkout.session.completed":
+        return {"ok": True, "ignored": event_type}
 
-    if event.get("type") != "checkout.session.completed":
-        return {"ok": True, "ignored": event.get("type")}
-
-    metadata = (event.get("data", {}).get("object", {}) or {}).get("metadata", {}) or {}
+    data_obj = (event.get("data") if isinstance(event, dict) else getattr(event, "data", {})) or {}
+    obj = data_obj.get("object") if isinstance(data_obj, dict) else getattr(data_obj, "object", {})
+    metadata = (obj.get("metadata") if isinstance(obj, dict) else getattr(obj, "metadata", {})) or {}
     cid = int(metadata.get("campaign_id") or 0)
     c = mark_campaign_paid(db, cid)
     if c is None:

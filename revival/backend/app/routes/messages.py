@@ -16,6 +16,7 @@ from app.models.orm import Campaign, Lead, Message
 from app.services.compliance import can_send, opt_out, record_event
 from app.services.reply_classifier import classify_reply
 from app.services.twilio_client import send_sms
+from app.services.webhook_auth import verify_twilio_request
 from app.utils.logger import get_logger
 
 
@@ -105,8 +106,13 @@ async def twilio_inbound(
     db: Session = Depends(get_db),
 ):
     """Twilio webhook. Finds the most recent lead matching `From`, classifies
-    the reply, transitions state, and replies (M5 adds Calendly auto-reply
-    on replied_hot)."""
+    the reply, transitions state, and replies (Calendly auto-reply on hot)."""
+    # M12 — Twilio signature verification. Blocks spoofed inbound replies
+    # that could poison opt-out records or trigger fake booking links.
+    if not await verify_twilio_request(request):
+        log.warning("twilio: signature check failed for inbound from %s", From)
+        raise HTTPException(status_code=403, detail="invalid twilio signature")
+
     intent = classify_reply(Body)
 
     # Find the most recently-contacted lead on this phone.

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Lead
+from app.services.webhook_auth import verify_calendly_request
 from app.utils.logger import get_logger
 
 log = get_logger("bookings")
@@ -45,8 +46,11 @@ def _extract_ids(payload: dict) -> dict:
 
 @router.post("/calendly")
 async def calendly_webhook(request: Request, db: Session = Depends(get_db)):
+    body_bytes = await request.body()
+    if not await verify_calendly_request(request, body_bytes):
+        raise HTTPException(status_code=403, detail="invalid calendly signature")
     try:
-        payload = await request.json()
+        payload = __import__("json").loads(body_bytes.decode("utf-8") or "{}")
     except Exception:
         raise HTTPException(status_code=400, detail="invalid json")
 
