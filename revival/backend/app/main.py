@@ -9,13 +9,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import init_db
 from app.routes import campaigns, generate, leads, messages
+from app.services.scheduler import start_scheduler, stop_scheduler
 from app.utils.settings import get_settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    yield
+    # Only start the scheduler when we're running under uvicorn, not during
+    # test imports. Tests call scheduler.tick() directly.
+    import os
+    if os.getenv("DISABLE_SCHEDULER") != "1":
+        start_scheduler(interval_minutes=15)
+    try:
+        yield
+    finally:
+        stop_scheduler()
 
 
 def create_app() -> FastAPI:
