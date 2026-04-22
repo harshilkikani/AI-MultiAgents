@@ -41,8 +41,18 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def set_workspace(request: Request, call_next):
-        # Placeholder — M7 swaps this for real auth.
-        request.state.workspace_id = 1
+        # M7: workspace-id resolution layered BEFORE real auth (M8+).
+        # Priority:
+        #   1. X-Workspace-Id header (set by auth layer once it lands)
+        #   2. ?workspace=N query param (demo / test convenience)
+        #   3. default = 1
+        header = request.headers.get("X-Workspace-Id")
+        qp = request.query_params.get("workspace")
+        try:
+            ws = int(header or qp or "1")
+        except (TypeError, ValueError):
+            ws = 1
+        request.state.workspace_id = ws if ws > 0 else 1
         return await call_next(request)
 
     @app.get("/api/health")

@@ -29,6 +29,17 @@ def init_db() -> None:
     from app.models import orm  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
+    # Seed the default workspace (id=1) so legacy callers without an auth
+    # header still have a valid workspace to point at.
+    from app.models.orm import Workspace
+    db = SessionLocal()
+    try:
+        if db.get(Workspace, 1) is None:
+            db.add(Workspace(id=1, name="Default workspace"))
+            db.commit()
+    finally:
+        db.close()
+
 
 def get_db() -> Iterator[Session]:
     db = SessionLocal()
