@@ -1,0 +1,38 @@
+# Local one-command bring-up. Postgres is commented out — SQLite is plenty
+# for v0 and one less moving part during a sales demo.
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8001:8001"
+    environment:
+      DEMO_MODE: "true"
+      DATABASE_URL: "sqlite:///./revival.db"
+      CORS_ORIGINS: "http://localhost:5174,http://localhost:8080"
+    volumes:
+      - backend_data:/app
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5174:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Uncomment when you outgrow SQLite:
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: revival
+  #     POSTGRES_PASSWORD: revival
+  #     POSTGRES_DB: revival
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+
+volumes:
+  backend_data:
+  # pg_data:

@@ -1,0 +1,35 @@
+# Lead Revival — Fly.io config (backend only; frontend ships to Vercel or
+# Netlify or wherever static hosting lives). NOT deployed automatically —
+# run `fly launch --config revival/fly.toml` when ready.
+app = "lead-revival"
+primary_region = "iad"
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  DEMO_MODE = "false"
+  DATABASE_URL = "sqlite:////data/revival.db"
+
+[[mounts]]
+  source = "revival_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
