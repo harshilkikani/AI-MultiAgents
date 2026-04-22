@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.orm import Campaign, Lead
 from app.models.schemas import VERTICALS, CampaignCreate, CampaignOut, CampaignUpdate
+from app.services.audit import record as audit_record
 
 router = APIRouter(prefix="/api/campaigns", tags=["campaigns"])
 
@@ -42,6 +43,15 @@ def create_campaign(payload: CampaignCreate, request: Request, db: Session = Dep
         tone_notes=payload.tone_notes,
     )
     db.add(c)
+    db.flush()  # get c.id before audit insert
+    audit_record(
+        db,
+        workspace_id=c.workspace_id, campaign_id=c.id,
+        event_type="campaign.created", actor_type="user",
+        actor_id=str(getattr(request.state, "external_id", None) or ""),
+        summary=f"Campaign '{c.name}' created ({c.vertical})",
+        after={"name": c.name, "vertical": c.vertical, "avg_ticket": c.avg_ticket},
+    )
     db.commit()
     db.refresh(c)
     return _to_out(c, lead_count=0)
@@ -108,6 +118,13 @@ def pause_campaign(campaign_id: int, request: Request, db: Session = Depends(get
     if not c.paused:
         c.paused = 1
         c.paused_at = datetime.now(UTC).replace(tzinfo=None)
+        audit_record(
+            db,
+            workspace_id=ws, campaign_id=c.id,
+            event_type="campaign.paused", actor_type="user",
+            actor_id=str(getattr(request.state, "external_id", None) or ""),
+            summary="Campaign paused",
+        )
         db.commit()
         db.refresh(c)
     return _to_out(c, _lead_count(db, c.id))
@@ -122,6 +139,13 @@ def resume_campaign(campaign_id: int, request: Request, db: Session = Depends(ge
     if c.paused:
         c.paused = 0
         c.paused_at = None
+        audit_record(
+            db,
+            workspace_id=ws, campaign_id=c.id,
+            event_type="campaign.resumed", actor_type="user",
+            actor_id=str(getattr(request.state, "external_id", None) or ""),
+            summary="Campaign resumed",
+        )
         db.commit()
         db.refresh(c)
     return _to_out(c, _lead_count(db, c.id))

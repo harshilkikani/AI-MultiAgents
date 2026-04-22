@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.orm import Campaign, JobberConnection, Lead
+from app.services.audit import record as audit_record
 from app.utils.logger import get_logger
 from app.utils.settings import get_settings
 
@@ -327,5 +328,12 @@ def sync_cold_leads(
         "skipped": result.skipped, "already_present": result.already_present,
         "synced_at": conn.last_synced_at.isoformat(),
     }
+    audit_record(
+        db,
+        workspace_id=workspace_id, campaign_id=campaign.id,
+        event_type="jobber.sync", actor_type="system",
+        summary=f"Jobber sync: {inserted} new · {already} already present · {skipped} skipped",
+        meta=conn.last_sync_stats,
+    )
     db.commit()
     return result

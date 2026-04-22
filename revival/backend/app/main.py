@@ -12,9 +12,34 @@ from app.routes import (
     auth, billing, bookings, campaigns, compliance, demo, generate,
     integrations, leads, messages, reports, workspace,
 )
+from app.routes import audit as audit_route
 from app.services.auth import resolve_auth_context
-from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.scheduler import last_tick_info, start_scheduler, stop_scheduler
+from app.utils.logger import get_logger
 from app.utils.settings import get_settings
+
+_log = get_logger("main")
+
+
+def _init_sentry() -> None:
+    """Wire up Sentry if SENTRY_DSN is set. No-ops otherwise so DEMO_MODE
+    and tests don't need the SDK configured."""
+    settings = get_settings()
+    if not settings.sentry_dsn:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.sentry_env,
+            traces_sample_rate=0.1,
+            integrations=[FastApiIntegration()],
+            send_default_pii=False,
+        )
+        _log.info("sentry initialized (env=%s)", settings.sentry_env)
+    except Exception as e:
+        _log.warning("sentry init failed: %s", e)
 
 # Paths that skip JWT auth — webhooks verify their own signatures, the demo
 # checkout page is HTML, and health is public.
@@ -36,6 +61,7 @@ def _is_public_path(path: str) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _init_sentry()
     init_db()
     # Only start the scheduler when we're running under uvicorn, not during
     # test imports. Tests call scheduler.tick() directly.
@@ -113,7 +139,35 @@ def create_app() -> FastAPI:
 
     @app.get("/api/health")
     def health():
-        return {"ok": True, "demo_mode": settings.demo_mode}
+        """Liveness + scheduler-freshness check.
+        - If the scheduler hasn't ticked in >30 min, return 503 so load
+          balancers can restart us.
+        - DEMO / test environments set DISABLE_SCHEDULER=1 and we skip the
+          staleness check so tests don't flap.
+        """
+        from datetime import UTC as _UTC, datetime as _dt
+        import os as _os
+        from fastapi.responses import JSONResponse
+        last, last_result = last_tick_info()
+        now = _dt.now(_UTC).replace(tzinfo=None)
+        minutes = None if last is None else (now - last).total_seconds() / 60.0
+        scheduler_disabled = _os.getenv("DISABLE_SCHEDULER") == "1"
+
+        body = {
+            "ok": True,
+            "demo_mode": settings.demo_mode,
+            "scheduler": {
+                "enabled": not scheduler_disabled,
+                "last_tick_at": last.isoformat() if last else None,
+                "minutes_since_last_tick": round(minutes, 2) if minutes is not None else None,
+                "last_tick_result": last_result,
+            },
+        }
+        if not scheduler_disabled and minutes is not None and minutes > 30.0:
+            body["ok"] = False
+            body["scheduler"]["stale"] = True
+            return JSONResponse(body, status_code=503)
+        return body
 
     app.include_router(campaigns.router)
     app.include_router(leads.router)
@@ -127,6 +181,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(workspace.router)
     app.include_router(integrations.router)
+    app.include_router(audit_route.router)
 
     return app
 

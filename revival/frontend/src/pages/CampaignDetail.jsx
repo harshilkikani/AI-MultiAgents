@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
+import ActivityLog from "../components/ActivityLog.jsx";
 import LeadTable from "../components/LeadTable.jsx";
 import MessageThread from "../components/MessageThread.jsx";
 import StateCounts from "../components/StateCounts.jsx";
@@ -10,6 +11,7 @@ export default function CampaignDetail({ id, onOpenReport }) {
   const [leads, setLeads] = useState([]);
   const [filter, setFilter] = useState(null);
   const [openLead, setOpenLead] = useState(null);
+  const [activeTab, setActiveTab] = useState("leads");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -123,11 +125,28 @@ export default function CampaignDetail({ id, onOpenReport }) {
       </div>
 
       <div className="lr-card">
-        <div className="lr-card-head">
-          <h2>Leads{filter ? ` · ${filter}` : ""}</h2>
-          <span className="lr-muted">{leads.length} shown</span>
+        <div className="lr-tabs">
+          <button
+            className={"lr-tab" + (activeTab === "leads" ? " active" : "")}
+            onClick={() => setActiveTab("leads")}
+          >Leads</button>
+          <button
+            className={"lr-tab" + (activeTab === "activity" ? " active" : "")}
+            onClick={() => setActiveTab("activity")}
+          >Activity log</button>
         </div>
-        <LeadTable leads={leads} onPick={setOpenLead} />
+
+        {activeTab === "leads" && (
+          <>
+            <div className="lr-card-head" style={{ marginTop: 10 }}>
+              <h2>Leads{filter ? ` · ${filter}` : ""}</h2>
+              <span className="lr-muted">{leads.length} shown</span>
+            </div>
+            <LeadTable leads={leads} onPick={setOpenLead} />
+          </>
+        )}
+
+        {activeTab === "activity" && <ActivityLog campaignId={id} />}
       </div>
 
       <MessageThread campaignId={id} lead={openLead} onClose={() => setOpenLead(null)} />

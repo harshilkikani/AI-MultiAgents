@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models.orm import Campaign, Lead, Message
+from app.services.audit import record as audit_record
 from app.services.compliance import can_send, record_event
 from app.services.quiet_hours import is_within_quiet_window
 from app.services.twilio_client import send_sms
@@ -20,6 +21,16 @@ from app.utils.logger import get_logger
 log = get_logger("scheduler")
 
 _ACTIVE_STATES = ("queued", "contacted", "replied_hot")
+
+# Module-level heartbeat — /api/health reads this to detect a stuck
+# scheduler. Updated at the end of every tick(); also updated when the
+# scheduler starts so the UI doesn't show "stale" for 15 min post-deploy.
+_last_tick_at: Optional[datetime] = None
+_last_tick_result: Optional[dict] = None
+
+
+def last_tick_info() -> tuple[Optional[datetime], Optional[dict]]:
+    return _last_tick_at, _last_tick_result
 
 
 def _now() -> datetime:
@@ -86,21 +97,35 @@ def tick(db: Optional[Session] = None) -> dict:
                 m.status = "failed"
                 failed += 1
                 continue
+            prev_state = lead.state
             m.status = "sent"
             m.sent_at = _now()
             m.twilio_sid = result.sid
             if lead.state == "queued":
                 lead.state = "contacted"
             sent += 1
+            audit_record(
+                db,
+                workspace_id=m.workspace_id,
+                campaign_id=m.campaign_id, lead_id=lead.id,
+                event_type="message.sent", actor_type="scheduler",
+                summary=f"Step {m.step} sent to {lead.name or lead.phone}",
+                meta={"message_id": m.id, "step": m.step, "twilio_sid": result.sid,
+                      "state_before": prev_state, "state_after": lead.state},
+            )
 
         db.commit()
-        return {
+        result = {
             "sent": sent,
             "skipped_quiet": skipped_quiet,
             "blocked_compliance": blocked_compliance,
             "failed": failed,
             "due": len(due),
         }
+        global _last_tick_at, _last_tick_result
+        _last_tick_at = _now()
+        _last_tick_result = result
+        return result
     finally:
         if owned:
             db.close()
@@ -110,12 +135,15 @@ _scheduler: Optional[BackgroundScheduler] = None
 
 
 def start_scheduler(interval_minutes: int = 15) -> None:
-    global _scheduler
+    global _scheduler, _last_tick_at
     if _scheduler is not None and _scheduler.running:
         return
     _scheduler = BackgroundScheduler(daemon=True)
     _scheduler.add_job(tick, "interval", minutes=interval_minutes, id="revival_tick", replace_existing=True)
     _scheduler.start()
+    # Seed the heartbeat so /api/health doesn't claim "stale" for the first
+    # interval window after boot.
+    _last_tick_at = _now()
     log.info("scheduler started — tick every %d min", interval_minutes)
 
 

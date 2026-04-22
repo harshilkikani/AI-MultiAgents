@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.orm import Campaign, Lead, Message
 from app.services.alerts import fire_alert
+from app.services.audit import record as audit_record
 from app.services.compliance import can_send, opt_out, record_event
 from app.services.reply_classifier import classify_reply
 from app.services.twilio_client import send_sms
@@ -132,6 +133,8 @@ async def twilio_inbound(
         log.info("inbound from %s with no matching active lead; dropping", From)
         return Response(content="<Response/>", media_type="application/xml")
 
+    prev_state = lead.state
+
     # Persist the inbound message.
     inbound = Message(
         workspace_id=lead.workspace_id,
@@ -177,6 +180,21 @@ async def twilio_inbound(
         # 'other' — still count as engagement for trial_leads_used metering
         if lead.state == "queued":
             lead.state = "contacted"
+
+    # Audit the inbound classification + state change.
+    audit_record(
+        db,
+        workspace_id=lead.workspace_id,
+        campaign_id=lead.campaign_id,
+        lead_id=lead.id,
+        event_type="lead.inbound_classified",
+        actor_type="webhook", actor_id="twilio",
+        summary=f"Reply classified as {intent}"
+                + (f" — state {prev_state} → {lead.state}" if prev_state != lead.state else ""),
+        before={"state": prev_state},
+        after={"state": lead.state, "intent": intent},
+        meta={"body_len": len(Body or ""), "message_sid": MessageSid},
+    )
 
     # Cancel any future pending messages for terminal states.
     if lead.state in ("opted_out", "replied_no"):

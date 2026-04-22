@@ -674,6 +674,91 @@ html, body, #root {
   text-align: center;
 }
 
+/* ---------- Tabs + Activity log ---------- */
+.lr-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-soft);
+  margin: 0 -6px 4px;
+  padding: 0 6px;
+}
+.lr-tab {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.lr-tab:hover { color: var(--text); }
+.lr-tab.active {
+  color: var(--keres);
+  border-bottom-color: var(--keres);
+}
+
+.lr-activity { padding-top: 10px; }
+.lr-activity-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+.lr-activity-filter select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.lr-activity-empty { padding: 20px; text-align: center; font-size: 13px; }
+.lr-activity-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.lr-activity-event {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  align-items: flex-start;
+}
+.lr-activity-icon { font-size: 18px; flex-shrink: 0; }
+.lr-activity-body { flex: 1; min-width: 0; }
+.lr-activity-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.lr-activity-type {
+  font-family: "SF Mono", Consolas, Menlo, monospace;
+  font-size: 11px;
+  color: var(--keres);
+  font-weight: 600;
+}
+.lr-activity-when { color: var(--muted-2); }
+.lr-activity-summary { font-size: 13px; line-height: 1.45; }
+.lr-activity-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--muted-2);
+  margin-top: 3px;
+}
+
 /* ---------- Integrations panels ---------- */
 .lr-integration {
   background: var(--panel-2);

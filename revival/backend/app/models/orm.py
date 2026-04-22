@@ -184,6 +184,29 @@ class OwnerAlert(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="sent")  # sent | failed | skipped
 
 
+class AuditEvent(Base):
+    """Generalized audit trail. Every state transition and owner-visible
+    action appends here so the activity log on CampaignDetail has a
+    single source of truth. Separate from ComplianceEvent (which is
+    purpose-built for TCPA paper trail)."""
+    __tablename__ = "audit_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    campaign_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    lead_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False)  # user | system | webhook | scheduler | api
+    actor_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    before: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    after: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
 class ComplianceEvent(Base):
     """Immutable audit trail. Every block / opt-out / unlock goes here so
     regulators can read the paper trail."""
