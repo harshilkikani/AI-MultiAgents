@@ -19,6 +19,30 @@ jobs:
     defaults:
       run:
         working-directory: revival/backend
+
+    # Stand up Postgres so the tests + migrations exercise the real engine,
+    # not just SQLite. SQLite stays supported for local dev.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: revival
+          POSTGRES_PASSWORD: revival
+          POSTGRES_DB: revival_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Tests still default to the tmp_path-created SQLite URL set by the
+      # test fixtures. This URL is used only for the migration smoke test.
+      PG_URL: postgresql+psycopg://revival:revival@localhost:5432/revival_test
+      REVIVAL_TEST_BYPASS: "1"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +55,11 @@ jobs:
       - run: pip install -r requirements.txt
 
       - run: python scripts/gen_sample_csv.py
+
+      # Exercise Alembic end-to-end against Postgres so a broken migration
+      # can never ship.
+      - name: Run migrations against Postgres
+        run: DATABASE_URL="$PG_URL" alembic upgrade head
 
       - run: python -m pytest -q
 

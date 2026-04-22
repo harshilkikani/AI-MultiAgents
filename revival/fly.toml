@@ -7,6 +7,10 @@ primary_region = "iad"
 [build]
   dockerfile = "backend/Dockerfile"
 
+# Migrate the DB before any new machine starts serving traffic.
+[deploy]
+  release_command = "alembic upgrade head"
+
 [env]
   DEMO_MODE = "false"
   DATABASE_URL = "sqlite:////data/revival.db"

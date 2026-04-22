@@ -14,6 +14,8 @@ COPY app ./app
 COPY scripts ./scripts
 COPY fixtures ./fixtures
 COPY pytest.ini .
+COPY alembic.ini .
+COPY migrations ./migrations
 
 ENV PYTHONUNBUFFERED=1 \
     DEMO_MODE=true \
