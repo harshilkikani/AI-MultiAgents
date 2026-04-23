@@ -60,7 +60,6 @@ export default function Login({ navigate }) {
           </button>
           {msg && <div className="lr-login-ok">{msg}</div>}
           {err && <div className="lr-error">{err}</div>}
-          {mode === "demo" && <div className="lr-muted">Demo mode — signing you in…</div>}
         </form>
         <div className="lr-login-foot">
           Or <a href="/demo" onClick={(e) => { e.preventDefault(); navigate("/demo"); }}>

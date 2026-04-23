@@ -59,10 +59,29 @@ export default function MessageThread({ campaignId, lead, onClose }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [data]);
 
+  // Esc to close + body-scroll lock while the modal is open.
+  useEffect(() => {
+    if (!lead) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [lead, onClose]);
+
   if (!lead) return null;
 
   return (
-    <div className="lr-modal-backdrop" onClick={onClose}>
+    <div
+      className="lr-modal-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Message thread for ${lead.name}`}
+    >
       <div className="lr-modal lr-thread-modal" onClick={(e) => e.stopPropagation()}>
         <div className="lr-thread-head">
           <div className="lr-thread-who">

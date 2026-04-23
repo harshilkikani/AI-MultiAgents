@@ -6,6 +6,7 @@ import Login from "./pages/Login.jsx";
 import RoiReport from "./pages/RoiReport.jsx";
 import Settings from "./pages/Settings.jsx";
 import Upload from "./pages/Upload.jsx";
+import HealthDot from "./components/HealthDot.jsx";
 import { clearSession, getToken } from "./auth.js";
 import { getWorkspace, setWorkspace } from "./ws.js";
 
@@ -107,6 +108,7 @@ export default function App() {
             className="lr-nav-link lr-nav-logout"
             onClick={() => { clearSession(); setWorkspace(1); navigate("/login"); }}
           >Sign out</button>
+          <HealthDot />
         </nav>
       </header>
 

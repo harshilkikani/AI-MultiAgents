@@ -300,13 +300,16 @@ export default function Upload({ onCreated }) {
                     <span className="lr-muted">{s.lead.phone || "no phone"} · urgency {s.urgency_score}/10 · best: {s.best_time_of_day}</span>
                   </div>
                   <div className="lr-sample-body">
-                    <div className="lr-msg lr-msg-out"><div className="lr-msg-head"><span className="lr-msg-step">Day 0</span></div><div className="lr-msg-body">{s.initial_msg}</div></div>
+                    <div className="lr-bubble-row lr-bubble-out">
+                      <div className="lr-bubble-meta"><span className="lr-bubble-step">Day 0</span></div>
+                      <div className="lr-bubble-body">{s.initial_msg}</div>
+                    </div>
                     {s.drip_msgs.map((m, j) => (
-                      <div key={j} className="lr-msg lr-msg-out">
-                        <div className="lr-msg-head">
-                          <span className="lr-msg-step">{["Day 3","Day 10","Day 24"][j]}</span>
+                      <div key={j} className="lr-bubble-row lr-bubble-out">
+                        <div className="lr-bubble-meta">
+                          <span className="lr-bubble-step">{["Day 3","Day 10","Day 24"][j]}</span>
                         </div>
-                        <div className="lr-msg-body">{m}</div>
+                        <div className="lr-bubble-body">{m}</div>
                       </div>
                     ))}
                   </div>
