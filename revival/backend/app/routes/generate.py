@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.orm import Campaign, Lead
-from app.services.revival_pipeline import _build_context, _generate_one, generate_for_campaign
+from app.services.revival_pipeline import _generate_one, generate_for_campaign
 
 router = APIRouter(prefix="/api/campaigns", tags=["generate"])
 

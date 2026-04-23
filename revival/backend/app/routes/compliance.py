@@ -1,7 +1,6 @@
 # Why this exists: owner-facing endpoints for the TCPA paper trail.
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request

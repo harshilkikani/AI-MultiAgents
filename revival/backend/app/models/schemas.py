@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 VERTICALS = ("septic", "roofing", "hvac", "plumbing", "electrical")
 
@@ -42,8 +42,7 @@ class CampaignOut(BaseModel):
     paused_at: Optional[datetime] = None
     lead_count: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeadOut(BaseModel):
@@ -56,8 +55,7 @@ class LeadOut(BaseModel):
     notes: Optional[str]
     state: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UploadResult(BaseModel):

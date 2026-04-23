@@ -11,7 +11,6 @@
 # calendly webhook-signing-key check before pointing real Calendly at this.
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request

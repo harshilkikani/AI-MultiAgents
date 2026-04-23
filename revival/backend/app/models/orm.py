@@ -3,13 +3,21 @@
 # schema migration.
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+
+
+def _utcnow_naive() -> datetime:
+    """datetime.utcnow() is deprecated in 3.12+. Store as naive UTC for
+    cross-DB consistency (SQLite doesn't hold tz, Postgres timestamps are
+    naive unless we opt into `timestamptz`). All app code reads these as
+    UTC by convention."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Workspace(Base):
@@ -17,7 +25,7 @@ class Workspace(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
 
     # Billing — trial is workspace-wide (not per campaign). First 10 leads
     # generated against any campaign in this workspace are free.
@@ -41,7 +49,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     external_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
 
 
 class WorkspaceMember(Base):
@@ -54,7 +62,7 @@ class WorkspaceMember(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(32), default="owner", nullable=False)  # owner | member
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
 
 
 class Campaign(Base):
@@ -66,7 +74,7 @@ class Campaign(Base):
     vertical: Mapped[str] = mapped_column(String(32), nullable=False)
     avg_ticket: Mapped[float] = mapped_column(Float, default=680.0, nullable=False)
     calendly_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     launched_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     paid: Mapped[bool] = mapped_column(Integer, default=0, nullable=False)  # 0/1 for sqlite simplicity
     trial_leads_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -105,7 +113,7 @@ class Lead(Base):
     external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
 
     state: Mapped[str] = mapped_column(String(32), default="queued", nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
 
     campaign: Mapped[Campaign] = relationship(back_populates="leads")
     messages: Mapped[list["Message"]] = relationship(back_populates="lead", cascade="all, delete-orphan")
@@ -141,7 +149,7 @@ class OptOut(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     phone: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    opted_out_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    opted_out_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False)  # "sms_reply" | "manual" | "dnc_registry" | "webform"
     proof_message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     proof_body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -161,7 +169,7 @@ class JobberConnection(Base):
     refresh_token: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     scopes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    connected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    connected_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     last_sync_stats: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)  # active | disconnected | expired
@@ -178,7 +186,7 @@ class OwnerAlert(Base):
     campaign_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     alert_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)  # replied_hot | booked
     channel: Mapped[str] = mapped_column(String(16), nullable=False)                 # sms | slack | email
-    sent_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    sent_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False, index=True)
     body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     twilio_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="sent")  # sent | failed | skipped
@@ -204,7 +212,7 @@ class AuditEvent(Base):
     before: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     after: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False, index=True)
 
 
 class ComplianceEvent(Base):
@@ -220,7 +228,7 @@ class ComplianceEvent(Base):
     event_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     # event_type one of: opted_out | opt_in_restored | dnc_blocked |
     # frequency_capped | send_allowed | manual_add
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False, index=True)
     body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     message_sid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

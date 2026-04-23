@@ -2,7 +2,6 @@
 # and secrets never leak into code paths by accident.
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict

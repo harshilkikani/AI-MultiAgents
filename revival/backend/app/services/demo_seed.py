@@ -3,12 +3,11 @@
 # endpoint so sales demos can refresh on demand.
 from __future__ import annotations
 
-import csv
 import random
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.orm import Campaign, Lead, Message, Workspace

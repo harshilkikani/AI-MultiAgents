@@ -2,12 +2,11 @@
 # stub tokens so the UI has a working auth flow without a Supabase project.
 from __future__ import annotations
 
-import os
 import time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db

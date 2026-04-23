@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session

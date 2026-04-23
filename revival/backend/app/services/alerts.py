@@ -16,7 +16,6 @@ from app.models.orm import Lead, OwnerAlert, Workspace
 from app.services.quiet_hours import is_within_owner_window
 from app.services.twilio_client import send_sms
 from app.utils.logger import get_logger
-from app.utils.settings import get_settings
 
 log = get_logger("alerts")
 

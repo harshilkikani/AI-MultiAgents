@@ -1,8 +1,6 @@
 # Why this exists: Checkout session creation + Stripe webhook.
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
