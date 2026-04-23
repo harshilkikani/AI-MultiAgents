@@ -5,20 +5,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
-@pytest.fixture
-def app(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setenv("DEMO_MODE", "true")
-    monkeypatch.setenv("DISABLE_SCHEDULER", "1")
-
-    import sys
-    for mod in [m for m in list(sys.modules) if m == "app" or m.startswith("app.")]:
-        sys.modules.pop(mod, None)
-
-    from app.db import init_db
-    from app.main import app as fresh_app
-    init_db()
-    return fresh_app
 
 
 async def _seed(c: AsyncClient, calendly: str | None = "https://calendly.com/hatcher-septic/30min") -> tuple[int, str]:
