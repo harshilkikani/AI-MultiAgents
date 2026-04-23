@@ -11,6 +11,7 @@
 # calendly webhook-signing-key check before pointing real Calendly at this.
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -50,7 +51,7 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_db)):
     if not await verify_calendly_request(request, body_bytes):
         raise HTTPException(status_code=403, detail="invalid calendly signature")
     try:
-        payload = __import__("json").loads(body_bytes.decode("utf-8") or "{}")
+        payload = json.loads(body_bytes.decode("utf-8") or "{}")
     except Exception:
         raise HTTPException(status_code=400, detail="invalid json")
 
@@ -72,8 +73,10 @@ async def calendly_webhook(request: Request, db: Session = Depends(get_db)):
         log.info("calendly webhook — no matching lead for %s", ids)
         return {"ok": True, "matched": False}
 
-    # Only advance hot → booked; don't reopen a cancelled/opted_out lead.
-    if lead.state in ("replied_hot", "contacted"):
+    # Only advance active leads → booked; don't reopen opted_out / declined.
+    # A lead in 'queued' state can still book if they clicked a Calendly
+    # link we shared via another channel (email, website) before any SMS.
+    if lead.state in ("queued", "contacted", "replied_hot"):
         lead.state = "booked"
         db.commit()
         try:

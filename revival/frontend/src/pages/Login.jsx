@@ -32,9 +32,16 @@ export default function Login({ navigate }) {
   return (
     <div className="lr-login">
       <div className="lr-card">
-        <h1>Sign in to Lead Revival</h1>
+        <div className="lr-login-brand">
+          <div className="lr-brand-mark">LR</div>
+          <div>
+            <div className="lr-brand-name">Lead Revival</div>
+            <div className="lr-brand-sub">Wake up old leads · ship recovered revenue</div>
+          </div>
+        </div>
+        <h1>Sign in</h1>
         <p className="lr-muted">
-          Enter your email and we'll send you a one-click magic link.
+          Enter your email and we'll send you a one-click magic link. New here? The same link signs you up.
         </p>
         <form className="lr-form" onSubmit={submit}>
           <label className="lr-field">

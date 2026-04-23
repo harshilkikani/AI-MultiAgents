@@ -519,6 +519,102 @@ html, body, #root {
   font-weight: 600;
   margin-top: 4px;
 }
+.lr-campaign-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* Skeleton loader — replaces "Loading…" text on list/cards */
+.lr-skeleton { position: relative; overflow: hidden; }
+.lr-skel-line {
+  height: 12px;
+  background: linear-gradient(90deg, var(--panel-2) 0%, var(--border-soft) 50%, var(--panel-2) 100%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  margin: 10px 0;
+  animation: lr-skel 1.3s linear infinite;
+}
+.lr-skel-w40 { width: 40%; }
+.lr-skel-w60 { width: 60%; }
+.lr-skel-w80 { width: 80%; }
+@keyframes lr-skel {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty state — bigger than a "Loading…" line, shows icon + CTA */
+.lr-empty-hero {
+  text-align: center;
+  padding: 44px 28px;
+}
+.lr-empty-hero .lr-empty-icon { font-size: 40px; margin-bottom: 14px; }
+.lr-empty-hero h2 { margin: 0 0 10px; font-size: 20px; }
+.lr-empty-hero .lr-muted { max-width: 440px; margin: 0 auto 18px; }
+.lr-empty-hero .lr-btn { display: inline-block; text-decoration: none; }
+
+/* Unpaid badge (distinct from paused) */
+.lr-unpaid-badge {
+  display: inline-block;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.lr-campaign-card.paused {
+  border-color: rgba(245, 194, 107, 0.35);
+  background: linear-gradient(180deg, rgba(245, 194, 107, 0.04), transparent);
+}
+.lr-campaign-card:focus { outline: 2px solid var(--keres); outline-offset: 2px; }
+
+/* Login page brand header */
+.lr-login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* Demo landing page — hero + spinner */
+.lr-demo-card { max-width: 720px; margin: 0 auto; }
+.lr-demo-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.lr-demo-mark { width: 56px; height: 56px; font-size: 20px; }
+.lr-demo-hero h1 { margin: 0 0 6px; font-size: 22px; }
+
+.lr-demo-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+.lr-demo-spin {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--keres);
+  border-radius: 50%;
+  animation: lr-spin 0.9s linear infinite;
+}
+@keyframes lr-spin { to { transform: rotate(360deg); } }
 .lr-campaign-states {
   display: flex;
   gap: 14px;

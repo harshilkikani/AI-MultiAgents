@@ -88,6 +88,14 @@ export default function Upload({ onCreated }) {
       const r = await api.uploadLeads(campaignId, file, mapping);
       setUploadResult(r);
       setStep("sample");
+      // Auto-generate 3 samples on first landing so the owner doesn't have to
+      // click twice. Tokens are not billed in DEMO_MODE and real mode is trivial.
+      try {
+        const samp = await api.sampleGenerate(campaignId, 3);
+        setSamples(samp.samples || []);
+      } catch {
+        /* sample gen failure is non-blocking — owner can retry */
+      }
     } catch (e) {
       setErr(e.message || String(e));
     } finally {

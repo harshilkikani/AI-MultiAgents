@@ -61,7 +61,18 @@ export default function CampaignDetail({ id, onOpenReport }) {
   };
 
   if (err) return <div className="lr-card lr-error">{err}</div>;
-  if (!campaign) return <div className="lr-card lr-muted">Loading…</div>;
+  if (!campaign) {
+    return (
+      <div className="lr-detail">
+        <div className="lr-card lr-skeleton">
+          <div className="lr-skel-line lr-skel-w60" />
+          <div className="lr-skel-line lr-skel-w40" />
+          <div className="lr-skel-line lr-skel-w80" />
+          <div className="lr-skel-line lr-skel-w80" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="lr-detail">

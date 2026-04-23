@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
+import JobberPanel from "../components/JobberPanel.jsx";
 
 // Common US timezones — dropdown beats a free-text box for correctness.
 const COMMON_TIMEZONES = [
@@ -92,7 +93,7 @@ export default function Settings() {
 
           <div className="lr-row">
             <label className="lr-field">
-              <span>Owner email (optional — not yet used)</span>
+              <span>Owner email (optional — backup channel if SMS ever bounces)</span>
               <input
                 type="email"
                 value={form.owner_email}

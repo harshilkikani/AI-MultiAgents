@@ -22,7 +22,14 @@ async function http(path, opts = {}) {
   if (!res.ok) {
     let detail;
     try { detail = (await res.json()).detail; } catch { detail = await res.text(); }
-    throw new Error(`${res.status} ${res.statusText} — ${detail || "request failed"}`);
+    // Prefer the server's own detail message over the raw HTTP status line
+    // — "Campaign not found" reads better than "404 Not Found — Campaign not
+    // found". We keep the status code prefix for 5xx so ops can triage.
+    const text = detail || res.statusText || "request failed";
+    const prefix = res.status >= 500 ? `Server error (${res.status}): ` : "";
+    const err = new Error(`${prefix}${text}`);
+    err.status = res.status;
+    throw err;
   }
   return res.status === 204 ? null : res.json();
 }

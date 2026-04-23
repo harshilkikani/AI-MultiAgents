@@ -47,22 +47,51 @@ export default function Demo({ navigate }) {
   };
 
   return (
-    <div className="lr-card">
-      <h1>Lead Revival — live demo</h1>
-      <p className="lr-muted">
-        Preview customer: <strong>Hatcher Septic &amp; Drain</strong>. Read-only view of a
-        real campaign mid-flight — 200 old leads, ~10 days into a 4-week drip.
-      </p>
-      {status === "loading" && <div className="lr-muted">Loading demo…</div>}
-      {status === "seeding" && <div className="lr-muted">Rebuilding demo data (takes a few seconds)…</div>}
+    <div className="lr-card lr-demo-card">
+      <div className="lr-demo-hero">
+        <div className="lr-brand-mark lr-demo-mark">LR</div>
+        <div>
+          <h1>Live demo workspace</h1>
+          <p className="lr-muted" style={{ marginBottom: 0 }}>
+            Preview customer: <strong>Hatcher Septic &amp; Drain</strong>. 200 old leads,
+            ~10 days into a 4-week drip. All data is fake; nothing is sent.
+          </p>
+        </div>
+      </div>
+
+      {status === "loading" && (
+        <div className="lr-skeleton">
+          <div className="lr-skel-line lr-skel-w60" />
+          <div className="lr-skel-line lr-skel-w80" />
+          <div className="lr-skel-line lr-skel-w40" />
+        </div>
+      )}
+      {status === "seeding" && (
+        <div className="lr-demo-progress">
+          <div className="lr-demo-spin" aria-hidden="true" />
+          Building demo data — seeding leads, generating messages, simulating ~10 days of drip.
+        </div>
+      )}
       {status === "unseeded" && (
         <div>
-          <p className="lr-muted">Demo hasn't been seeded yet. Click below to generate 200 leads + a running campaign.</p>
-          <button className="lr-btn" onClick={runReset}>Seed demo data</button>
+          <p className="lr-muted">Demo hasn't been seeded yet. One click generates 200 leads + a running campaign with realistic replies and bookings.</p>
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <button className="lr-btn" onClick={runReset}>Seed demo data</button>
+            <button className="lr-btn lr-btn-secondary" onClick={() => { setWorkspace(1); navigate("/"); }}>
+              Or head to your workspace →
+            </button>
+          </div>
         </div>
       )}
       {status === "ready" && <div className="lr-muted">Redirecting to the demo campaign…</div>}
-      {err && <div className="lr-error">{err}</div>}
+      {err && (
+        <div className="lr-error" style={{ marginTop: 14 }}>
+          {err}
+          {info && info.seeded === false && (
+            <> · <button className="lr-btn lr-btn-small" onClick={runReset} style={{ marginLeft: 8 }}>Retry seed</button></>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -24,14 +24,36 @@ function useRoute() {
   return [path, navigate];
 }
 
+const PAGE_TITLES = {
+  "/": "Upload · Lead Revival",
+  "/campaigns": "Campaigns · Lead Revival",
+  "/settings": "Settings · Lead Revival",
+  "/demo": "Demo · Lead Revival",
+  "/login": "Sign in · Lead Revival",
+};
+
+function titleForRoute(route) {
+  if (PAGE_TITLES[route]) return PAGE_TITLES[route];
+  if (route.endsWith("/report")) return "ROI report · Lead Revival";
+  if (route.startsWith("/campaigns/")) return `Campaign #${route.split("/")[2]} · Lead Revival`;
+  return "Lead Revival";
+}
+
 export default function App() {
   const [path, navigate] = useRoute();
   const route = path.replace(/\/$/, "") || "/";
   const isReport = route.startsWith("/campaigns/") && route.endsWith("/report");
-  const isDemo = route === "/demo";
   const isLogin = route === "/login";
   const ws = getWorkspace();
   const token = getToken();
+  const inDemoWorkspace = ws === 2;
+
+  // Sync the browser tab title with the route.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.title = titleForRoute(route);
+    }
+  }, [route]);
 
   // Gate: if no session and we're not on a public route, redirect to login.
   useEffect(() => {
@@ -53,7 +75,7 @@ export default function App() {
 
   return (
     <div className="lr-app">
-      {isDemo || ws !== 1 ? (
+      {inDemoWorkspace && (
         <div className="lr-demo-banner no-print">
           <span className="lr-demo-badge">Preview</span>
           <span>
@@ -63,7 +85,7 @@ export default function App() {
             Exit demo →
           </button>
         </div>
-      ) : null}
+      )}
       <header className="lr-header no-print">
         <div className="lr-brand">
           <div className="lr-brand-mark">LR</div>
