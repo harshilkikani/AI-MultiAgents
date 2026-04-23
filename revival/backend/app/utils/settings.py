@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     jobber_client_secret: str = ""
     jobber_redirect_uri: str = "http://localhost:5174/integrations/jobber/callback"
 
+    # Observability (M20) — blank = no-op, safe for DEMO and local.
+    sentry_dsn: str = ""
+    sentry_env: str = "dev"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

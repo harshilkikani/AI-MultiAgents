@@ -80,6 +80,11 @@ export const api = {
   stats: (campaignId) => http(`/api/campaigns/${campaignId}/stats`),
   leadMessages: (campaignId, leadId) =>
     http(`/api/campaigns/${campaignId}/leads/${leadId}/messages`),
+  campaignAudit: (campaignId, eventType) => {
+    const q = eventType ? `?event_type=${encodeURIComponent(eventType)}` : "";
+    return http(`/api/campaigns/${campaignId}/audit${q}`);
+  },
+  healthCheck: () => http("/api/health"),
 
   manualSend: (messageId) =>
     http(`/api/messages/${messageId}/send`, { method: "POST" }),
