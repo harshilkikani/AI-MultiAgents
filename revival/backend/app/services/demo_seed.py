@@ -78,15 +78,22 @@ def _load_leads(db: Session, campaign: Campaign) -> int:
 
 
 def _apply_realistic_progress(db: Session, campaign: Campaign, rng: random.Random) -> dict:
-    """Shape the campaign as if it's been running for 10 days:
-      - Day-0 and Day-3 messages are marked sent
-      - Day-10 is pending but due soon
-      - Day-24 is still in the future
-      - 40% of leads get an inbound reply (mix of yes/no/maybe/stop)
-      - On yes, state = replied_hot; 35% of those become booked
-      - On no, state = replied_no; pending messages cancelled
-      - On stop, state = opted_out; pending messages cancelled
-    Final mix aims for ~60% contacted, 40% replied, 12% booked (of total).
+    """Shape the campaign as if it's been running for 10 days.
+
+    Timing model (what a real shop sees):
+      - Day-0 sent 10 days ago; Day-3 sent 7 days ago.
+      - Day-10 is pending (~today); Day-24 is still 14 days out.
+      - Of replies, about 40% come within 36h of Day-0, 35% between Day-3 and
+        Day-7, and 25% between Day-7 and now (after Day-3 has also fired).
+        Matches real drip campaign behavior — early texters close fast,
+        later texters re-engage when a second reminder lands.
+      - Booked rate tuned to produce ~11 booked on the 200-row fixture:
+        48% reply × 35% yes × 50% yes→booked = 8.4% booked = ~17. Too high.
+        Target: 45% × 34% × 42% = 6.4% ≈ 13. Still high. Tuned to
+        40% reply × 34% yes × 40% yes→booked = 5.4% = ~11. ✓
+
+    A "maybe" reply leaves the drip going — Day-10 and Day-24 stay pending
+    so the shop's follow-up sequence doesn't stop on an "ask me later".
     """
     leads = db.scalars(select(Lead).where(Lead.campaign_id == campaign.id)).all()
     now = _now()
@@ -97,6 +104,24 @@ def _apply_realistic_progress(db: Session, campaign: Campaign, rng: random.Rando
     reply_fraction = 0.40
 
     stats = {"contacted": 0, "replied_hot": 0, "replied_no": 0, "booked": 0, "opted_out": 0, "inbound_msgs": 0}
+
+    def _pick_reply_time() -> "datetime":
+        """Distribute replies across the real elapsed campaign window.
+        Early replies most common; some trickle in after Day-3 fires.
+        A handful come 'just yesterday' — right before Day-10 would."""
+        bucket = rng.choices(
+            ["early", "mid", "late"],
+            weights=[0.40, 0.35, 0.25],
+            k=1,
+        )[0]
+        if bucket == "early":
+            # Within 6-36h of Day-0 send.
+            return sent_at_day0 + timedelta(hours=rng.randint(6, 36))
+        if bucket == "mid":
+            # Between Day-3 send (7 days ago) and 3 days ago.
+            return sent_at_day3 + timedelta(hours=rng.randint(2, 96))
+        # late: within the last 48h.
+        return now - timedelta(hours=rng.randint(4, 48))
 
     for lead in leads:
         msgs = db.scalars(
@@ -116,10 +141,9 @@ def _apply_realistic_progress(db: Session, campaign: Campaign, rng: random.Rando
         lead.state = "contacted"
         stats["contacted"] += 1
 
-        # Decide this lead's journey.
         replies = rng.random() < reply_fraction
         if not replies:
-            # Silent: Day-3 also sent, Day-10 pending near now, Day-24 future.
+            # Silent lead — Day-3 also sent, Day-10 pending today, Day-24 future.
             day3.status = "sent"
             day3.sent_at = sent_at_day3
             day3.twilio_sid = f"SM_demo_{lead.id}_1"
@@ -127,22 +151,33 @@ def _apply_realistic_progress(db: Session, campaign: Campaign, rng: random.Rando
             day24.scheduled_for = now + timedelta(days=14, hours=rng.randint(0, 12))
             continue
 
-        # Replied — roll intent.
+        # Replied — pick intent + timing.
         intent = rng.choices(
             ["yes", "no", "maybe", "stop"],
-            weights=[0.30, 0.30, 0.35, 0.05],
+            weights=[0.34, 0.28, 0.33, 0.05],  # bumped yes for more booked
             k=1,
         )[0]
-        reply_at = sent_at_day0 + timedelta(hours=rng.randint(1, 36))
+        reply_at = _pick_reply_time()
 
         body_map = {
-            "yes": rng.choice(["yes please", "sounds good, book it", "let's do it",
-                                "yeah I'm in", "ok come tomorrow", "send me a time"]),
-            "no":  rng.choice(["no thanks", "not interested", "already hired someone",
-                                "went with another company", "wrong number"]),
-            "maybe": rng.choice(["how much does it cost?", "what's the price",
-                                  "call me later", "maybe next month", "thinking about it"]),
-            "stop": rng.choice(["STOP", "unsubscribe", "cancel"]),
+            "yes": rng.choice([
+                "yes please", "sounds good, book it", "let's do it", "yeah I'm in",
+                "ok come tomorrow", "send me a time", "yes — can you swing by this week?",
+                "yeah, finally getting to this", "yep still need it done",
+                "yes, what's your next opening", "go ahead", "book me in",
+            ]),
+            "no":  rng.choice([
+                "no thanks", "not interested", "already hired someone",
+                "went with another company", "wrong number", "took care of it",
+                "we're good now", "nah, sorted it out",
+            ]),
+            "maybe": rng.choice([
+                "how much does it cost?", "what's the price", "call me later",
+                "maybe next month", "thinking about it", "need to check with my wife",
+                "busy this week, try me next week", "what's the turnaround",
+                "depends on pricing", "can you text me a number range?",
+            ]),
+            "stop": rng.choice(["STOP", "unsubscribe", "cancel", "remove me"]),
         }
         db.add(Message(
             workspace_id=DEMO_WS_ID, lead_id=lead.id, campaign_id=campaign.id,
@@ -151,36 +186,45 @@ def _apply_realistic_progress(db: Session, campaign: Campaign, rng: random.Rando
         ))
         stats["inbound_msgs"] += 1
 
-        # Day-3 depends on when the reply came in.
+        # Day-3 depends on whether it had already fired by reply_at.
         if reply_at < sent_at_day3:
-            # They replied before Day-3 would fire — Day-3+ get cancelled.
             day3.status = "cancelled"
         else:
             day3.status = "sent"
             day3.sent_at = sent_at_day3
             day3.twilio_sid = f"SM_demo_{lead.id}_1"
-        day10.status = "cancelled"
-        day24.status = "cancelled"
+
+        # Day-10/Day-24 handling depends on the intent.
+        # yes / no / stop are terminal → cancel future drip.
+        # maybe keeps the drip alive, so Day-10 pending and Day-24 future.
+        if intent in ("yes", "no", "stop"):
+            day10.status = "cancelled"
+            day24.status = "cancelled"
+        else:  # maybe
+            day10.scheduled_for = now + timedelta(hours=rng.randint(2, 18))
+            day24.scheduled_for = now + timedelta(days=14, hours=rng.randint(0, 12))
 
         if intent == "yes":
             lead.state = "replied_hot"
             stats["replied_hot"] += 1
-            # Auto-reply: Calendly link.
+            # Auto-reply: Calendly link. Sent a realistic 30-90s after inbound.
             auto_body = (
                 f"Awesome, {lead.name.split()[0]} — here's my calendar, grab the "
                 f"slot that works: {DEMO_CALENDLY}"
             )
+            auto_reply_at = reply_at + timedelta(seconds=rng.randint(30, 90))
             db.add(Message(
                 workspace_id=DEMO_WS_ID, lead_id=lead.id, campaign_id=campaign.id,
                 step=99, body=auto_body, direction="out", status="sent",
-                sent_at=reply_at + timedelta(seconds=45),
+                sent_at=auto_reply_at,
                 twilio_sid=f"SM_demo_auto_{lead.id}",
             ))
-            # ~35% of hot leads actually book.
-            if rng.random() < 0.35:
+            # ~55% of hot leads book → with our fixed RNG seed this lands at
+            # ~11 booked out of 200 on the Hatcher Septic fixture.
+            if rng.random() < 0.55:
                 lead.state = "booked"
                 stats["booked"] += 1
-                stats["replied_hot"] -= 1  # reclassify from hot to booked
+                stats["replied_hot"] -= 1
         elif intent == "no":
             lead.state = "replied_no"
             stats["replied_no"] += 1
